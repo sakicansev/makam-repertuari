@@ -188,6 +188,7 @@
 
   <div class="toolbar">
     <input class="ui" id="search" type="text" placeholder="Eser, bestekâr veya makam ara...">
+    <button class="btn-ghost" id="backupBtn">Yedekle</button>
     <button class="btn-primary" id="addBtn">+ Yeni eser ekle</button>
   </div>
 
@@ -265,9 +266,9 @@ const seed = [
   {eser:"Münâcât - Ya ilahi ism-i azam hakkı için", tur:"Münâcât", makam:"Müstear", bestekar:"", link:"https://drive.google.com/file/d/1-ox8N9qP6o3ymOz5aIcOatd468oj87d4/view?usp=share_link"},
   {eser:"Yüce sultanım derde dermanım", tur:"Sözlü", makam:"Suzidil", bestekar:"Zekai Dede (Yunus Emre)", link:"https://divanmakam.com/attachments/yuce-sultanim-derde-dermanim-zekai-dede-suzidil-v5-pdf.58243/"},
   {eser:"Âyin-i Şerîf", tur:"Âyin-i Şerîf", makam:"Suzidilârâ", bestekar:"Sultan III. Selim", link:"https://drive.google.com/file/d/17bS4Fz-fbpa-NUi5SLDHhyLexsDzEdk2/view?usp=share_link"},
-  {eser:"Kâr-ı Haydarname", tur:"Kâr", makam:"Rast", bestekar:"Abdülkadir-i Merâgî", link:""},
+  {eser:"Kâr-ı Haydarname", tur:"Kâr", makam:"Rast", bestekar:"Abdülkadir-i Merâgî", link:"https://drive.google.com/file/d/1oU8yFN4rMgUkjVplxWrXxGeFC_u5J-Na/view?usp=share_link"},
   {eser:"Nefes: Şah-ı Merdan", tur:"Nefes", makam:"Acem Kürdi", bestekar:"Pir Sultan Abdal", link:"https://drive.google.com/file/d/12DdZvvMHr0-XNYgL_-ju0tMKaZTOn3Jp/view?usp=share_link"},
-  {eser:"Âyin-i Şerîf", tur:"Âyin-i Şerîf", makam:"Segah", bestekar:"Buhûrîzâde Mustafa Itrî", link:"https://drive.google.com/file/d/1U-wUTN1T_9C0D4h2006NsTc_H_Kb_Spx/view?usp=sharing"},
+  {eser:"Âyin-i Şerîf", tur:"Âyin-i Şerîf", makam:"Segah", bestekar:"Buhûrîzâde Mustafa Itrî", link:"https://drive.google.com/file/d/1UoNc730W5fEgjjYVjqqJIiKhxcRzSjsk/view?usp=share_link"},
   {eser:"Alem Yüzüne Saldı Ziya", tur:"Sözlü", makam:"Neveser", bestekar:"Hüseyin Baba", link:"https://divanmakam.com/attachments/alem-yuzune-saldi-ziya-al-i-muhammed-huseyin-baba-karaagac-seyhi-neveser-v7-pdf.1862/"},
   {eser:"Âyin-i Şerîf", tur:"Âyin-i Şerîf", makam:"Ferahfeza", bestekar:"Hammâmîzâde İsmail Dede Efendi", link:"https://drive.google.com/drive/folders/1aWh220DjkU_gXX1OYr05PmZtpduQ2dJh?usp=share_link"}
 ];
@@ -288,12 +289,24 @@ async function loadData(){
   render();
 }
 
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
 async function saveData(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
   }catch(e){
-    console.error('Kaydetme hatası', e);
+    console.error('Kaydetme hatası:', e);
+    return false;
   }
+}
+
+async function persistChange(mutateFn){
+  const backup = JSON.parse(JSON.stringify(data));
+  mutateFn();
+  const ok = await saveData();
+  if(!ok){ data = backup; }
+  return ok;
 }
 
 function trSort(a,b){ return a.localeCompare(b,'tr'); }
@@ -434,10 +447,23 @@ document.getElementById('modalOverlay').addEventListener('click', (e) => {
 
 document.getElementById('deleteBtn').addEventListener('click', async () => {
   if(!editingId) return;
-  data = data.filter(d => d.id !== editingId);
-  await saveData();
-  closeModal();
-  render();
+  const delBtn = document.getElementById('deleteBtn');
+  const idToDelete = editingId;
+  delBtn.textContent = 'Siliniyor...';
+  delBtn.disabled = true;
+  const ok = await persistChange(() => {
+    data = data.filter(d => d.id !== idToDelete);
+  });
+  delBtn.textContent = 'Sil';
+  delBtn.disabled = false;
+  if(ok){
+    closeModal();
+    render();
+  } else {
+    const errorEl = document.getElementById('formError');
+    errorEl.textContent = 'Silinemedi, bağlantı sorunu olabilir. Lütfen tekrar dene.';
+    errorEl.style.display = 'block';
+  }
 });
 
 document.getElementById('eserForm').addEventListener('submit', async (e) => {
@@ -460,15 +486,30 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
     link: document.getElementById('f-link').value.trim()
   };
 
-  if(editingId){
-    const idx = data.findIndex(d => d.id === editingId);
-    data[idx] = {...data[idx], ...payload};
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalLabel = submitBtn.textContent;
+  submitBtn.textContent = 'Kaydediliyor...';
+  submitBtn.disabled = true;
+
+  const ok = await persistChange(() => {
+    if(editingId){
+      const idx = data.findIndex(d => d.id === editingId);
+      data[idx] = {...data[idx], ...payload};
+    } else {
+      data.push({...payload, id: uid()});
+    }
+  });
+
+  submitBtn.textContent = originalLabel;
+  submitBtn.disabled = false;
+
+  if(ok){
+    closeModal();
+    render();
   } else {
-    data.push({...payload, id: uid()});
+    errorEl.textContent = 'Kaydedilemedi (bağlantı sorunu olabilir). Lütfen "Kaydet"e tekrar bas.';
+    errorEl.style.display = 'block';
   }
-  await saveData();
-  closeModal();
-  render();
 });
 
 document.getElementById('search').addEventListener('input', (e) => {
@@ -478,5 +519,83 @@ document.getElementById('search').addEventListener('input', (e) => {
 
 loadData();
 </script>
+<div class="modal-overlay" id="backupOverlay" style="display:none;">
+  <div class="modal">
+    <h2>Yedekle / Geri Yükle</h2>
+    <label class="ui" style="display:block; font-size:0.8rem; color:var(--ink-dim); margin-bottom:0.4rem;">
+      Mevcut listen (kopyalayıp bir yere sakla):
+    </label>
+    <textarea id="backupExport" class="ui" readonly
+      style="width:100%; height:110px; background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:0.6rem; font-size:0.75rem; margin-bottom:0.5rem;"></textarea>
+    <button type="button" class="btn-ghost" id="copyBackupBtn" style="width:100%; margin-bottom:1.1rem;">Panoya Kopyala</button>
+
+    <label class="ui" style="display:block; font-size:0.8rem; color:var(--ink-dim); margin-bottom:0.4rem;">
+      Geri yüklemek için buraya yapıştır (mevcut listenin üzerine yazar):
+    </label>
+    <textarea id="backupImport" class="ui" placeholder="Buraya yedek metnini yapıştır..."
+      style="width:100%; height:90px; background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:0.6rem; font-size:0.75rem; margin-bottom:0.5rem;"></textarea>
+    <div class="form-error" id="backupError" style="display:none;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="closeBackupBtn">Kapat</button>
+      <button type="button" class="btn-primary" id="importBackupBtn">İçe Aktar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('backupBtn').addEventListener('click', () => {
+  document.getElementById('backupExport').value = JSON.stringify(data, null, 2);
+  document.getElementById('backupImport').value = '';
+  document.getElementById('backupError').style.display = 'none';
+  document.getElementById('backupOverlay').style.display = 'flex';
+});
+document.getElementById('closeBackupBtn').addEventListener('click', () => {
+  document.getElementById('backupOverlay').style.display = 'none';
+});
+document.getElementById('backupOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'backupOverlay') document.getElementById('backupOverlay').style.display = 'none';
+});
+document.getElementById('copyBackupBtn').addEventListener('click', async () => {
+  const ta = document.getElementById('backupExport');
+  ta.select();
+  try{
+    await navigator.clipboard.writeText(ta.value);
+    const btn = document.getElementById('copyBackupBtn');
+    const old = btn.textContent;
+    btn.textContent = 'Kopyalandı ✓';
+    setTimeout(() => btn.textContent = old, 1500);
+  }catch(e){
+    document.execCommand('copy');
+  }
+});
+document.getElementById('importBackupBtn').addEventListener('click', async () => {
+  const raw = document.getElementById('backupImport').value.trim();
+  const errEl = document.getElementById('backupError');
+  if(!raw){ return; }
+  let parsed;
+  try{
+    parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)) throw new Error('not array');
+  }catch(e){
+    errEl.textContent = 'Geçersiz format. Yedek metnini olduğu gibi yapıştırdığından emin ol.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('importBackupBtn');
+  btn.textContent = 'Yükleniyor...';
+  btn.disabled = true;
+  const ok = await persistChange(() => { data = parsed.map(d => ({...d, id: d.id || uid()})); });
+  btn.textContent = 'İçe Aktar';
+  btn.disabled = false;
+  if(ok){
+    document.getElementById('backupOverlay').style.display = 'none';
+    render();
+  } else {
+    errEl.textContent = 'Kaydedilemedi, bağlantı sorunu olabilir. Tekrar dene.';
+    errEl.style.display = 'block';
+  }
+});
+</script>
+
 </body>
 </html>
