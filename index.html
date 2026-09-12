@@ -188,6 +188,7 @@
 
   <div class="toolbar">
     <input class="ui" id="search" type="text" placeholder="Eser, bestekâr veya makam ara...">
+    <span id="syncBadge" class="ui" style="font-size:0.75rem; padding:0.4rem 0.7rem; border-radius:6px; white-space:nowrap;"></span>
     <button class="btn-ghost" id="backupBtn">Yedekle</button>
     <button class="btn-primary" id="addBtn">+ Yeni eser ekle</button>
   </div>
@@ -231,6 +232,24 @@
 
 <script>
 const STORAGE_KEY = 'eserler';
+const GITHUB_OWNER = 'sakicansev';
+const GITHUB_REPO = 'makam-repertuari';
+const DATA_FILE = 'data.json';
+let dataSource = 'local'; // 'github' | 'local'
+
+async function fetchGithubData(){
+  const url = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${DATA_FILE}?t=${Date.now()}`;
+  try{
+    const res = await fetch(url, {cache:'no-store'});
+    if(res.ok){
+      const json = await res.json();
+      if(Array.isArray(json)) return json;
+    }
+  }catch(e){
+    console.error('GitHub verisi okunamadı:', e);
+  }
+  return null;
+}
 let data = [];
 let currentMakam = 'all';
 let searchText = '';
@@ -276,6 +295,15 @@ const seed = [
 function uid(){ return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 async function loadData(){
+  const remote = await fetchGithubData();
+  if(remote){
+    data = remote;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    dataSource = 'github';
+    render();
+    return;
+  }
+  dataSource = 'local';
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     data = raw ? JSON.parse(raw) : [];
@@ -289,24 +317,22 @@ async function loadData(){
   render();
 }
 
-function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-
 async function saveData(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    return true;
+    return { ok:true };
   }catch(e){
     console.error('Kaydetme hatası:', e);
-    return false;
+    return { ok:false, reason:'Cihazda kaydedilemedi' };
   }
 }
 
 async function persistChange(mutateFn){
   const backup = JSON.parse(JSON.stringify(data));
   mutateFn();
-  const ok = await saveData();
-  if(!ok){ data = backup; }
-  return ok;
+  const res = await saveData();
+  if(!res.ok){ data = backup; }
+  return res;
 }
 
 function trSort(a,b){ return a.localeCompare(b,'tr'); }
@@ -398,6 +424,7 @@ function render(){
   renderSidebar();
   renderContent();
   renderMakamDatalist();
+  renderSyncBadge();
 }
 
 function renderMakamDatalist(){
@@ -451,14 +478,15 @@ document.getElementById('deleteBtn').addEventListener('click', async () => {
   const idToDelete = editingId;
   delBtn.textContent = 'Siliniyor...';
   delBtn.disabled = true;
-  const ok = await persistChange(() => {
+  const res = await persistChange(() => {
     data = data.filter(d => d.id !== idToDelete);
   });
   delBtn.textContent = 'Sil';
   delBtn.disabled = false;
-  if(ok){
+  if(res.ok){
     closeModal();
     render();
+    if(res.warning) showToast('Bu cihazda silindi, GitHub\'a gönderilemedi: ' + res.warning);
   } else {
     const errorEl = document.getElementById('formError');
     errorEl.textContent = 'Silinemedi, bağlantı sorunu olabilir. Lütfen tekrar dene.';
@@ -491,7 +519,7 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
   submitBtn.textContent = 'Kaydediliyor...';
   submitBtn.disabled = true;
 
-  const ok = await persistChange(() => {
+  const res = await persistChange(() => {
     if(editingId){
       const idx = data.findIndex(d => d.id === editingId);
       data[idx] = {...data[idx], ...payload};
@@ -503,9 +531,10 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
   submitBtn.textContent = originalLabel;
   submitBtn.disabled = false;
 
-  if(ok){
+  if(res.ok){
     closeModal();
     render();
+    if(res.warning) showToast('Bu cihazda kaydedildi, GitHub\'a gönderilemedi: ' + res.warning);
   } else {
     errorEl.textContent = 'Kaydedilemedi (bağlantı sorunu olabilir). Lütfen "Kaydet"e tekrar bas.';
     errorEl.style.display = 'block';
@@ -516,8 +545,6 @@ document.getElementById('search').addEventListener('input', (e) => {
   searchText = e.target.value;
   renderContent();
 });
-
-loadData();
 </script>
 <div class="modal-overlay" id="backupOverlay" style="display:none;">
   <div class="modal">
@@ -584,17 +611,44 @@ document.getElementById('importBackupBtn').addEventListener('click', async () =>
   const btn = document.getElementById('importBackupBtn');
   btn.textContent = 'Yükleniyor...';
   btn.disabled = true;
-  const ok = await persistChange(() => { data = parsed.map(d => ({...d, id: d.id || uid()})); });
+  const res = await persistChange(() => { data = parsed.map(d => ({...d, id: d.id || uid()})); });
   btn.textContent = 'İçe Aktar';
   btn.disabled = false;
-  if(ok){
+  if(res.ok){
     document.getElementById('backupOverlay').style.display = 'none';
     render();
+    if(res.warning) showToast('Bu cihazda içe aktarıldı, GitHub\'a gönderilemedi: ' + res.warning);
   } else {
     errEl.textContent = 'Kaydedilemedi, bağlantı sorunu olabilir. Tekrar dene.';
     errEl.style.display = 'block';
   }
 });
+</script>
+
+<div id="toast" class="ui" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--panel-3); border:0.5px solid var(--border-strong); color:var(--ink); padding:0.7rem 1.1rem; border-radius:8px; font-size:0.82rem; max-width:90vw; z-index:100; box-shadow:0 4px 20px rgba(0,0,0,0.4);"></div>
+
+<script>
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 4500);
+}
+
+function renderSyncBadge(){
+  const badge = document.getElementById('syncBadge');
+  if(dataSource === 'github'){
+    badge.textContent = 'GitHub\'daki liste ✓';
+    badge.style.background = 'var(--teal-bg)';
+    badge.style.color = 'var(--teal)';
+  } else {
+    badge.textContent = 'Bu cihazdaki liste';
+    badge.style.background = 'var(--panel-3)';
+    badge.style.color = 'var(--ink-faint)';
+  }
+}
+
+loadData();
 </script>
 
 </body>
