@@ -189,6 +189,7 @@
   <div class="toolbar">
     <input class="ui" id="search" type="text" placeholder="Eser, bestekâr veya makam ara...">
     <span id="syncBadge" class="ui" style="font-size:0.75rem; padding:0.4rem 0.7rem; border-radius:6px; white-space:nowrap;"></span>
+    <button class="btn-ghost" id="tokenBtn">GitHub Token</button>
     <button class="btn-ghost" id="backupBtn">Yedekle</button>
     <button class="btn-primary" id="addBtn">+ Yeni eser ekle</button>
   </div>
@@ -250,6 +251,57 @@ async function fetchGithubData(){
   }
   return null;
 }
+const TOKEN_KEY = 'github_write_token';
+
+function getToken(){
+  return localStorage.getItem(TOKEN_KEY) || null;
+}
+function setToken(t){
+  localStorage.setItem(TOKEN_KEY, t);
+}
+function clearToken(){
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+async function pushToGithub(token, payload){
+  const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_FILE}`;
+  let sha = null;
+  try{
+    const getRes = await fetch(apiUrl, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    if(getRes.ok){
+      sha = (await getRes.json()).sha;
+    } else if(getRes.status !== 404){
+      const err = await getRes.json().catch(() => ({}));
+      return { ok:false, reason: err.message || ('HTTP ' + getRes.status) };
+    }
+  }catch(e){
+    return { ok:false, reason: e.message };
+  }
+
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+  const body = { message: 'Repertuar güncellendi', content };
+  if(sha) body.sha = sha;
+
+  try{
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if(putRes.ok) return { ok:true };
+    const err = await putRes.json().catch(() => ({}));
+    return { ok:false, reason: err.message || ('HTTP ' + putRes.status) };
+  }catch(e){
+    return { ok:false, reason: e.message };
+  }
+}
+
 let data = [];
 let currentMakam = 'all';
 let searchText = '';
@@ -320,11 +372,18 @@ async function loadData(){
 async function saveData(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    return { ok:true };
   }catch(e){
     console.error('Kaydetme hatası:', e);
     return { ok:false, reason:'Cihazda kaydedilemedi' };
   }
+
+  const token = getToken();
+  if(token){
+    const res = await pushToGithub(token, data);
+    dataSource = res.ok ? 'github' : 'local';
+    return res.ok ? { ok:true } : { ok:true, warning: res.reason };
+  }
+  return { ok:true };
 }
 
 async function persistChange(mutateFn){
@@ -625,6 +684,31 @@ document.getElementById('importBackupBtn').addEventListener('click', async () =>
 });
 </script>
 
+<div class="modal-overlay" id="tokenOverlay" style="display:none;">
+  <div class="modal">
+    <h2>GitHub Token</h2>
+    <p class="ui" style="font-size:0.8rem; color:var(--ink-dim); margin:-0.4rem 0 1rem; line-height:1.5;">
+      Bu token'ı <strong>sadece bu bilgisayara</strong> tanıt. Başka hiçbir cihaza girmene gerek yok —
+      diğerleri zaten listeni otomatik okuyor. Sadece bu cihazdan eklediklerin GitHub'a yazılsın istiyorsan bunu doldur.
+    </p>
+    <label class="ui" style="display:block; font-size:0.8rem; color:var(--ink-dim); margin-bottom:0.5rem;">
+      Personal Access Token
+      <input id="token-input" type="password" placeholder="github_pat_..."
+        style="display:block; width:100%; margin-top:0.35rem; background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:0.55rem 0.7rem; font-family:'Inter',sans-serif; font-size:0.88rem;">
+    </label>
+    <p class="ui" style="font-size:0.74rem; color:var(--ink-faint); margin:0 0 1.1rem; line-height:1.5;">
+      GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens →
+      Generate new token. Repository access: sadece "makam-repertuari". Permissions → Contents: Read and write.
+    </p>
+    <div class="form-error" id="tokenError" style="display:none;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-danger" id="removeTokenBtn" style="display:none;">Token'ı Kaldır</button>
+      <button type="button" class="btn-ghost" id="closeTokenBtn">Kapat</button>
+      <button type="button" class="btn-primary" id="saveTokenBtn">Kaydet</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="ui" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--panel-3); border:0.5px solid var(--border-strong); color:var(--ink); padding:0.7rem 1.1rem; border-radius:8px; font-size:0.82rem; max-width:90vw; z-index:100; box-shadow:0 4px 20px rgba(0,0,0,0.4);"></div>
 
 <script>
@@ -637,8 +721,13 @@ function showToast(msg){
 
 function renderSyncBadge(){
   const badge = document.getElementById('syncBadge');
-  if(dataSource === 'github'){
-    badge.textContent = 'GitHub\'daki liste ✓';
+  const hasToken = !!getToken();
+  if(dataSource === 'github' && hasToken){
+    badge.textContent = 'GitHub\'a yazıyor ✓';
+    badge.style.background = 'var(--teal-bg)';
+    badge.style.color = 'var(--teal)';
+  } else if(dataSource === 'github'){
+    badge.textContent = 'GitHub\'dan okunuyor';
     badge.style.background = 'var(--teal-bg)';
     badge.style.color = 'var(--teal)';
   } else {
@@ -647,6 +736,59 @@ function renderSyncBadge(){
     badge.style.color = 'var(--ink-faint)';
   }
 }
+
+function openTokenModal(){
+  const cur = getToken();
+  document.getElementById('token-input').value = cur || '';
+  document.getElementById('tokenError').style.display = 'none';
+  document.getElementById('removeTokenBtn').style.display = cur ? 'inline-block' : 'none';
+  document.getElementById('tokenOverlay').style.display = 'flex';
+}
+
+document.getElementById('tokenBtn').addEventListener('click', openTokenModal);
+document.getElementById('closeTokenBtn').addEventListener('click', () => {
+  document.getElementById('tokenOverlay').style.display = 'none';
+});
+document.getElementById('tokenOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'tokenOverlay') document.getElementById('tokenOverlay').style.display = 'none';
+});
+
+document.getElementById('removeTokenBtn').addEventListener('click', () => {
+  clearToken();
+  document.getElementById('tokenOverlay').style.display = 'none';
+  renderSyncBadge();
+  showToast('Token kaldırıldı. Bu cihaz artık GitHub\'a yazmayacak, sadece okuyacak.');
+});
+
+document.getElementById('saveTokenBtn').addEventListener('click', async () => {
+  const token = document.getElementById('token-input').value.trim();
+  const errEl = document.getElementById('tokenError');
+  const btn = document.getElementById('saveTokenBtn');
+  if(!token){
+    errEl.textContent = 'Token boş olamaz.';
+    errEl.style.display = 'block';
+    return;
+  }
+  btn.textContent = 'Bağlanıyor...';
+  btn.disabled = true;
+  errEl.style.display = 'none';
+
+  const res = await pushToGithub(token, data);
+
+  btn.textContent = 'Kaydet';
+  btn.disabled = false;
+
+  if(res.ok){
+    setToken(token);
+    dataSource = 'github';
+    document.getElementById('tokenOverlay').style.display = 'none';
+    renderSyncBadge();
+    showToast('Token kaydedildi. Bu cihaz artık GitHub\'a yazabiliyor.');
+  } else {
+    errEl.textContent = 'Bağlanılamadı: ' + res.reason + ' (token izinlerini ve repo adını kontrol et)';
+    errEl.style.display = 'block';
+  }
+});
 
 loadData();
 </script>
