@@ -188,7 +188,14 @@
 
   <div class="toolbar">
     <input class="ui" id="search" type="text" placeholder="Eser, bestekâr veya makam ara...">
+    <select id="sortSelect" class="ui" style="background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:0.6rem 0.7rem; font-size:0.85rem;">
+      <option value="yeni">Son eklenen</option>
+      <option value="alfabetik">Alfabetik (Eser)</option>
+      <option value="bestekar">Bestekâra göre</option>
+      <option value="ogreten">Öğretene göre</option>
+    </select>
     <span id="syncBadge" class="ui" style="font-size:0.75rem; padding:0.4rem 0.7rem; border-radius:6px; white-space:nowrap;"></span>
+    <button class="btn-ghost" id="surpriseBtn">🎲 Bugün ne çalışsam?</button>
     <button class="btn-ghost" id="tokenBtn">GitHub Token</button>
     <button class="btn-ghost" id="backupBtn">Yedekle</button>
     <button class="btn-primary" id="addBtn">+ Yeni eser ekle</button>
@@ -226,6 +233,10 @@
       </label>
       <label>Nota linki
         <input id="f-link" type="url" placeholder="https://...">
+      </label>
+      <label>Notlar
+        <textarea id="f-notlar" class="ui" placeholder="Zorluk noktaları, parmak pozisyonu, hoca notları..."
+          style="display:block; width:100%; margin-top:0.35rem; background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:0.55rem 0.7rem; font-family:'Inter',sans-serif; font-size:0.85rem; min-height:70px; resize:vertical;"></textarea>
       </label>
       <div class="form-error" id="formError" style="display:none;"></div>
       <div class="modal-actions">
@@ -311,6 +322,7 @@ async function pushToGithub(token, payload){
 let data = [];
 let currentMakam = 'all';
 let searchText = '';
+let currentSort = 'yeni';
 let editingId = null;
 
 const seed = [
@@ -407,6 +419,30 @@ function getMakamlar(){
   return Array.from(set).sort(trSort);
 }
 
+function sortItems(items){
+  const arr = [...items];
+  if(currentSort === 'alfabetik'){
+    arr.sort((a,b) => trSort(a.eser||'', b.eser||''));
+  } else if(currentSort === 'bestekar'){
+    arr.sort((a,b) => {
+      if(!a.bestekar && !b.bestekar) return 0;
+      if(!a.bestekar) return 1;
+      if(!b.bestekar) return -1;
+      return trSort(a.bestekar, b.bestekar);
+    });
+  } else if(currentSort === 'ogreten'){
+    arr.sort((a,b) => {
+      if(!a.ogreten && !b.ogreten) return 0;
+      if(!a.ogreten) return 1;
+      if(!b.ogreten) return -1;
+      return trSort(a.ogreten, b.ogreten);
+    });
+  } else {
+    arr.sort((a,b) => (b.eklenmeTarihi||0) - (a.eklenmeTarihi||0));
+  }
+  return arr;
+}
+
 function filteredData(){
   let items = data;
   if(currentMakam !== 'all'){
@@ -422,7 +458,7 @@ function filteredData(){
       (d.tur||'').toLocaleLowerCase('tr').includes(q)
     );
   }
-  return items;
+  return sortItems(items);
 }
 
 function renderSidebar(){
@@ -448,11 +484,15 @@ function cardHtml(item){
   const linkRow = item.link
     ? `<div class="link-row"><a href="${escapeAttr(item.link)}" target="_blank" rel="noopener">Notaya git ↗</a></div>`
     : '';
+  const notlarRow = item.notlar
+    ? `<p class="ui" style="font-size:0.76rem; color:var(--ink-faint); margin:0.4rem 0 0; font-style:italic; line-height:1.4;">"${escapeHtml(item.notlar.length > 80 ? item.notlar.slice(0,80) + '…' : item.notlar)}"</p>`
+    : '';
   return `<div class="card" data-id="${item.id}">
       ${item.tur ? `<span class="badge">${escapeHtml(item.tur)}</span>` : ''}
       <p class="eser-name">${escapeHtml(item.eser || 'İsimsiz eser')}</p>
       ${item.bestekar ? `<p class="bestekar">${escapeHtml(item.bestekar)}</p>` : ''}
       ${item.ogreten ? `<p class="bestekar" style="color:var(--gold-dim);">Öğreten: ${escapeHtml(item.ogreten)}</p>` : ''}
+      ${notlarRow}
       ${linkRow}
     </div>`;
 }
@@ -528,6 +568,7 @@ function openModal(id){
     document.getElementById('f-bestekar').value = item.bestekar || '';
     document.getElementById('f-ogreten').value = item.ogreten || '';
     document.getElementById('f-link').value = item.link || '';
+    document.getElementById('f-notlar').value = item.notlar || '';
     document.getElementById('deleteBtn').style.display = 'inline-block';
   } else {
     document.getElementById('modalTitle').textContent = 'Yeni eser ekle';
@@ -590,7 +631,8 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
     tur: document.getElementById('f-tur').value.trim(),
     bestekar: document.getElementById('f-bestekar').value.trim(),
     ogreten: document.getElementById('f-ogreten').value.trim(),
-    link: document.getElementById('f-link').value.trim()
+    link: document.getElementById('f-link').value.trim(),
+    notlar: document.getElementById('f-notlar').value.trim()
   };
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -603,7 +645,7 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
       const idx = data.findIndex(d => d.id === editingId);
       data[idx] = {...data[idx], ...payload};
     } else {
-      data.push({...payload, id: uid()});
+      data.push({...payload, id: uid(), eklenmeTarihi: Date.now()});
     }
   });
 
@@ -622,6 +664,11 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
 
 document.getElementById('search').addEventListener('input', (e) => {
   searchText = e.target.value;
+  renderContent();
+});
+
+document.getElementById('sortSelect').addEventListener('change', (e) => {
+  currentSort = e.target.value;
   renderContent();
 });
 </script>
@@ -809,7 +856,47 @@ document.getElementById('saveTokenBtn').addEventListener('click', async () => {
     errEl.style.display = 'block';
   }
 });
+</script>
 
+<div class="modal-overlay" id="surpriseOverlay" style="display:none;">
+  <div class="modal">
+    <h2 class="ui" style="text-align:center;">🎲 Bugün ne çalışsam?</h2>
+    <div id="surpriseContent" style="text-align:center; padding:0.5rem 0 0.5rem;"></div>
+    <div class="modal-actions" style="justify-content:center; margin-top:1rem;">
+      <button type="button" class="btn-ghost" id="rerollBtn">Başka Öner</button>
+      <button type="button" class="btn-primary" id="closeSurpriseBtn">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('surpriseBtn').addEventListener('click', () => {
+  if(data.length === 0) return;
+  const pick = data[Math.floor(Math.random() * data.length)];
+  const box = document.getElementById('surpriseContent');
+  box.innerHTML = `
+    ${pick.tur ? `<span class="badge">${escapeHtml(pick.tur)}</span>` : ''}
+    <p style="font-size:1.4rem; font-weight:500; color:var(--ink); margin:0.3rem 0 0.5rem;">${escapeHtml(pick.eser || 'İsimsiz eser')}</p>
+    <p class="ui" style="font-size:0.85rem; color:var(--gold-bright); margin:0 0 0.3rem;">${escapeHtml(pick.makam)}</p>
+    ${pick.bestekar ? `<p class="ui" style="font-size:0.85rem; color:var(--ink-dim); margin:0 0 0.2rem;">${escapeHtml(pick.bestekar)}</p>` : ''}
+    ${pick.ogreten ? `<p class="ui" style="font-size:0.8rem; color:var(--gold-dim); margin:0 0 0.2rem;">Öğreten: ${escapeHtml(pick.ogreten)}</p>` : ''}
+    ${pick.notlar ? `<p class="ui" style="font-size:0.8rem; color:var(--ink-faint); font-style:italic; margin:0.5rem 0 0;">"${escapeHtml(pick.notlar)}"</p>` : ''}
+    ${pick.link ? `<div class="link-row" style="margin-top:0.7rem;"><a href="${escapeAttr(pick.link)}" target="_blank" rel="noopener">Notaya git ↗</a></div>` : ''}
+  `;
+  document.getElementById('surpriseOverlay').style.display = 'flex';
+});
+document.getElementById('closeSurpriseBtn').addEventListener('click', () => {
+  document.getElementById('surpriseOverlay').style.display = 'none';
+});
+document.getElementById('surpriseOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'surpriseOverlay') document.getElementById('surpriseOverlay').style.display = 'none';
+});
+document.getElementById('rerollBtn').addEventListener('click', () => {
+  document.getElementById('surpriseBtn').click();
+});
+</script>
+
+<script>
 loadData();
 </script>
 
