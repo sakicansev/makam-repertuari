@@ -209,17 +209,20 @@
         <input id="f-eser" type="text" placeholder="Örn. Yüce sultanım derde dermanım">
       </label>
       <label>Tür
-        <input id="f-tur" type="text" placeholder="Örn. Peşrev, Saz Semai, Sözlü, Âyin-i Şerîf...">
+        <input id="f-tur" list="turList" type="text" placeholder="Örn. Peşrev, Saz Semai, Sözlü, Âyin-i Şerîf...">
+        <datalist id="turList"></datalist>
       </label>
       <label>Makam
         <input id="f-makam" list="makamList" type="text" placeholder="Örn. Uşşak">
         <datalist id="makamList"></datalist>
       </label>
       <label>Bestekâr
-        <input id="f-bestekar" type="text" placeholder="Örn. Tanburi Hafız Ali Efendi">
+        <input id="f-bestekar" list="bestekarList" type="text" placeholder="Örn. Tanburi Hafız Ali Efendi">
+        <datalist id="bestekarList"></datalist>
       </label>
       <label>Öğreten / Hoca
-        <input id="f-ogreten" type="text" placeholder="Örn. hocanın adı">
+        <input id="f-ogreten" list="ogretenList" type="text" placeholder="Örn. hocanın adı">
+        <datalist id="ogretenList"></datalist>
       </label>
       <label>Nota linki
         <input id="f-link" type="url" placeholder="https://...">
@@ -491,9 +494,19 @@ function render(){
   renderSyncBadge();
 }
 
+function uniqueSorted(field){
+  const set = new Set(data.map(d => d[field]).filter(v => v && v.trim()));
+  return Array.from(set).sort(trSort);
+}
+
 function renderMakamDatalist(){
-  const dl = document.getElementById('makamList');
-  dl.innerHTML = getMakamlar().map(m => `<option value="${escapeAttr(m)}"></option>`).join('');
+  const fill = (id, values) => {
+    document.getElementById(id).innerHTML = values.map(v => `<option value="${escapeAttr(v)}"></option>`).join('');
+  };
+  fill('makamList', getMakamlar());
+  fill('turList', uniqueSorted('tur'));
+  fill('bestekarList', uniqueSorted('bestekar'));
+  fill('ogretenList', uniqueSorted('ogreten'));
 }
 
 function escapeHtml(str){
