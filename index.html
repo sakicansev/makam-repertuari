@@ -218,6 +218,9 @@
       <label>Bestekâr
         <input id="f-bestekar" type="text" placeholder="Örn. Tanburi Hafız Ali Efendi">
       </label>
+      <label>Öğreten / Hoca
+        <input id="f-ogreten" type="text" placeholder="Örn. hocanın adı">
+      </label>
       <label>Nota linki
         <input id="f-link" type="url" placeholder="https://...">
       </label>
@@ -411,6 +414,7 @@ function filteredData(){
     items = items.filter(d =>
       (d.eser||'').toLocaleLowerCase('tr').includes(q) ||
       (d.bestekar||'').toLocaleLowerCase('tr').includes(q) ||
+      (d.ogreten||'').toLocaleLowerCase('tr').includes(q) ||
       (d.makam||'').toLocaleLowerCase('tr').includes(q) ||
       (d.tur||'').toLocaleLowerCase('tr').includes(q)
     );
@@ -445,6 +449,7 @@ function cardHtml(item){
       ${item.tur ? `<span class="badge">${escapeHtml(item.tur)}</span>` : ''}
       <p class="eser-name">${escapeHtml(item.eser || 'İsimsiz eser')}</p>
       ${item.bestekar ? `<p class="bestekar">${escapeHtml(item.bestekar)}</p>` : ''}
+      ${item.ogreten ? `<p class="bestekar" style="color:var(--gold-dim);">Öğreten: ${escapeHtml(item.ogreten)}</p>` : ''}
       ${linkRow}
     </div>`;
 }
@@ -508,6 +513,7 @@ function openModal(id){
     document.getElementById('f-tur').value = item.tur || '';
     document.getElementById('f-makam').value = item.makam || '';
     document.getElementById('f-bestekar').value = item.bestekar || '';
+    document.getElementById('f-ogreten').value = item.ogreten || '';
     document.getElementById('f-link').value = item.link || '';
     document.getElementById('deleteBtn').style.display = 'inline-block';
   } else {
@@ -570,6 +576,7 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
     makam,
     tur: document.getElementById('f-tur').value.trim(),
     bestekar: document.getElementById('f-bestekar').value.trim(),
+    ogreten: document.getElementById('f-ogreten').value.trim(),
     link: document.getElementById('f-link').value.trim()
   };
 
