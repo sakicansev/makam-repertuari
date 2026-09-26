@@ -208,6 +208,17 @@
 
 </div>
 
+<div class="modal-overlay" id="detailOverlay" style="display:none;">
+  <div class="modal" style="max-width:460px;">
+    <div id="detailContent"></div>
+    <div id="detailLinkRow" style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem;"></div>
+    <div class="modal-actions" style="margin-top:1.1rem;">
+      <button type="button" class="btn-ghost" id="closeDetailBtn">Kapat</button>
+      <button type="button" class="btn-primary" id="editFromDetailBtn">Düzenle</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalOverlay" style="display:none;">
   <div class="modal">
     <h2 id="modalTitle">Yeni eser ekle</h2>
@@ -233,6 +244,9 @@
       </label>
       <label>Nota linki
         <input id="f-link" type="url" placeholder="https://...">
+      </label>
+      <label>YouTube linki (bir icra bulduysan)
+        <input id="f-youtube" type="url" placeholder="https://youtube.com/watch?v=...">
       </label>
       <label>Notlar
         <textarea id="f-notlar" class="ui" placeholder="Zorluk noktaları, parmak pozisyonu, hoca notları..."
@@ -324,6 +338,7 @@ let currentMakam = 'all';
 let searchText = '';
 let currentSort = 'yeni';
 let editingId = null;
+let detailId = null;
 
 const seed = [
   {eser:"Saz Semai", tur:"Saz Semai", makam:"Acem Kürdi", bestekar:"Cevdet Çağla", link:"https://divanmakam.com/attachments/saz-semaisi-cevdet-cagla-kemani-acem-kurdi-v6-pdf.77218/"},
@@ -523,8 +538,75 @@ function renderContent(){
   content.innerHTML = html;
 
   content.querySelectorAll('.card').forEach(el => {
-    el.addEventListener('click', () => openModal(el.getAttribute('data-id')));
+    el.addEventListener('click', () => openDetailModal(el.getAttribute('data-id')));
   });
+}
+
+function extractYoutubeId(url){
+  if(!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([\w-]{11})/,
+    /(?:youtu\.be\/)([\w-]{11})/,
+    /(?:youtube\.com\/embed\/)([\w-]{11})/,
+    /(?:youtube\.com\/shorts\/)([\w-]{11})/
+  ];
+  for(const p of patterns){
+    const m = url.match(p);
+    if(m) return m[1];
+  }
+  return null;
+}
+
+function buildVersionSearchUrl(item){
+  const sites = ['neyzen.com','divanmakam.com','notaarsivleri.com','uskudarmusikicemiyeti.com','trnota.com'];
+  const siteClause = sites.map(s => `site:${s}`).join(' OR ');
+  const q = `"${item.eser}" ${item.makam} nota (${siteClause})`;
+  return 'https://www.google.com/search?q=' + encodeURIComponent(q);
+}
+
+function buildYoutubeSearchUrl(item){
+  const parts = [item.eser, item.bestekar, item.makam].filter(Boolean).join(' ');
+  return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(parts);
+}
+
+function openDetailModal(id){
+  const item = data.find(d => d.id === id);
+  if(!item) return;
+  detailId = id;
+
+  const box = document.getElementById('detailContent');
+  const ytId = extractYoutubeId(item.youtube);
+
+  const rows = [];
+  if(item.bestekar) rows.push(['Bestekâr', item.bestekar]);
+  if(item.ogreten) rows.push(['Öğreten / Hoca', item.ogreten]);
+  if(item.notlar) rows.push(['Notlar', item.notlar]);
+
+  box.innerHTML = `
+    ${item.tur ? `<span class="badge">${escapeHtml(item.tur)}</span>` : ''}
+    <p style="font-size:1.5rem; font-weight:500; color:var(--ink); margin:0.3rem 0 0.2rem; line-height:1.3;">${escapeHtml(item.eser || 'İsimsiz eser')}</p>
+    <p class="ui" style="font-size:0.9rem; color:var(--gold-bright); margin:0 0 1rem;">${escapeHtml(item.makam)}</p>
+    ${rows.map(([label,val]) => `
+      <div style="margin-bottom:0.6rem;">
+        <p class="ui" style="font-size:0.72rem; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; margin:0 0 0.15rem;">${label}</p>
+        <p style="font-size:0.95rem; color:var(--ink); margin:0; ${label==='Notlar' ? 'font-style:italic;' : ''}">${escapeHtml(val)}</p>
+      </div>
+    `).join('')}
+    ${ytId ? `
+      <div style="margin:1rem 0; border-radius:10px; overflow:hidden; aspect-ratio:16/9;">
+        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/${ytId}" title="YouTube video" frameborder="0" allowfullscreen style="display:block;"></iframe>
+      </div>
+    ` : ''}
+  `;
+
+  const linkRow = document.getElementById('detailLinkRow');
+  linkRow.innerHTML = `
+    ${item.link ? `<a href="${escapeAttr(item.link)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">Notaya git ↗</a>` : ''}
+    <a href="${buildVersionSearchUrl(item)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">Diğer versiyonları ara ↗</a>
+    ${!ytId ? `<a href="${buildYoutubeSearchUrl(item)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">YouTube'da ara ↗</a>` : ''}
+  `;
+
+  document.getElementById('detailOverlay').style.display = 'flex';
 }
 
 function render(){
@@ -568,6 +650,7 @@ function openModal(id){
     document.getElementById('f-bestekar').value = item.bestekar || '';
     document.getElementById('f-ogreten').value = item.ogreten || '';
     document.getElementById('f-link').value = item.link || '';
+    document.getElementById('f-youtube').value = item.youtube || '';
     document.getElementById('f-notlar').value = item.notlar || '';
     document.getElementById('deleteBtn').style.display = 'inline-block';
   } else {
@@ -587,6 +670,17 @@ function closeModal(){
 
 document.getElementById('addBtn').addEventListener('click', () => openModal(null));
 document.getElementById('cancelBtn').addEventListener('click', closeModal);
+
+document.getElementById('closeDetailBtn').addEventListener('click', () => {
+  document.getElementById('detailOverlay').style.display = 'none';
+});
+document.getElementById('detailOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'detailOverlay') document.getElementById('detailOverlay').style.display = 'none';
+});
+document.getElementById('editFromDetailBtn').addEventListener('click', () => {
+  document.getElementById('detailOverlay').style.display = 'none';
+  openModal(detailId);
+});
 document.getElementById('modalOverlay').addEventListener('click', (e) => {
   if(e.target.id === 'modalOverlay') closeModal();
 });
@@ -632,6 +726,7 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
     bestekar: document.getElementById('f-bestekar').value.trim(),
     ogreten: document.getElementById('f-ogreten').value.trim(),
     link: document.getElementById('f-link').value.trim(),
+    youtube: document.getElementById('f-youtube').value.trim(),
     notlar: document.getElementById('f-notlar').value.trim()
   };
 
