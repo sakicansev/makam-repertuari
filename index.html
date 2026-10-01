@@ -219,6 +219,23 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="pdfViewerOverlay" style="display:none;">
+  <div class="modal" style="max-width:720px; width:92vw; height:85vh; display:flex; flex-direction:column;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.6rem; margin-bottom:0.6rem;">
+      <p id="pdfViewerTitle" style="margin:0; font-size:1rem; color:var(--ink); font-weight:500;"></p>
+      <button type="button" class="btn-ghost" id="closePdfViewerBtn">Kapat</button>
+    </div>
+    <div style="flex:1; min-height:0; border-radius:10px; overflow:hidden; background:#0c0906;">
+      <iframe id="pdfViewerFrame" src="" style="width:100%; height:100%; border:0; display:block;"></iframe>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.7rem;">
+      <button type="button" class="btn-ghost" id="saveOfflineBtn">Offline için kaydet</button>
+      <a id="pdfExternalLink" href="#" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">Dış sekmede aç ↗</a>
+    </div>
+    <p id="pdfViewerStatus" class="ui" style="font-size:0.78rem; color:var(--ink-faint); margin:0.5rem 0 0;"></p>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalOverlay" style="display:none;">
   <div class="modal">
     <h2 id="modalTitle">Yeni eser ekle</h2>
@@ -626,13 +643,143 @@ function openDetailModal(id){
   `;
 
   const linkRow = document.getElementById('detailLinkRow');
+  const savedBadge = item.link && isOfflineSaved(item) ? ' ✓ (offline kayıtlı)' : '';
   linkRow.innerHTML = `
-    ${item.link ? `<a href="${escapeAttr(item.link)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">Notaya git ↗</a>` : ''}
+    ${item.link ? `<button type="button" class="btn-ghost" id="openNotaBtn" data-id="${escapeAttr(item.id)}">Notayı aç${savedBadge}</button>` : ''}
     <a href="${buildVersionSearchUrl(item)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">Diğer versiyonları ara ↗</a>
     ${!ytId ? `<a href="${buildYoutubeSearchUrl(item)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">YouTube'da ara ↗</a>` : ''}
   `;
+  const openNotaBtn = document.getElementById('openNotaBtn');
+  if(openNotaBtn) openNotaBtn.addEventListener('click', () => openPdfViewer(item));
 
   document.getElementById('detailOverlay').style.display = 'flex';
+}
+
+// --- Offline nota görüntüleme / kaydetme ---
+
+function convertNotaUrlForEmbed(url){
+  if(!url) return url;
+  // Google Drive "view" linkleri iframe içinde açılmaya izin vermez; "preview" linki buna özel tasarlanmış.
+  const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if(driveFileMatch){
+    return `https://drive.google.com/file/d/${driveFileMatch[1]}/preview`;
+  }
+  const driveOpenMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if(driveOpenMatch){
+    return `https://drive.google.com/file/d/${driveOpenMatch[1]}/preview`;
+  }
+  return url;
+}
+
+function offlineSavedKey(item){
+  return 'offlineSaved_' + item.id;
+}
+function isOfflineSaved(item){
+  return localStorage.getItem(offlineSavedKey(item)) === '1';
+}
+function markOfflineSaved(item, val){
+  if(val) localStorage.setItem(offlineSavedKey(item), '1');
+  else localStorage.removeItem(offlineSavedKey(item));
+}
+
+let wakeLock = null;
+
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  }catch(e){
+    console.error('Ekran açık tutma başarısız:', e);
+    wakeLock = null;
+  }
+}
+
+async function releaseWakeLock(){
+  if(wakeLock){
+    try{ await wakeLock.release(); }catch(e){}
+    wakeLock = null;
+  }
+}
+
+// Sekme arka plana alınıp geri gelindiğinde (örn. kısa süreli başka uygulamaya geçiş)
+// wake lock otomatik düşer; görüntüleyici hâlâ açıksa tekrar iste.
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible'
+     && document.getElementById('pdfViewerOverlay').style.display === 'flex'
+     && !wakeLock){
+    requestWakeLock();
+  }
+});
+
+function openPdfViewer(item){
+  const embedUrl = convertNotaUrlForEmbed(item.link);
+  const isDrive = embedUrl.includes('drive.google.com');
+  document.getElementById('pdfViewerTitle').textContent = displayTitle(item);
+  document.getElementById('pdfViewerFrame').src = embedUrl;
+  document.getElementById('pdfExternalLink').href = item.link;
+  const statusEl = document.getElementById('pdfViewerStatus');
+  const saveBtn = document.getElementById('saveOfflineBtn');
+  saveBtn.dataset.itemId = item.id;
+  saveBtn.dataset.embedUrl = embedUrl;
+  if(isDrive){
+    saveBtn.disabled = true;
+    statusEl.textContent = 'Google Drive dosyaları offline için kaydedilemiyor, görüntülemek için internet gerekiyor.';
+  } else {
+    saveBtn.disabled = false;
+    statusEl.textContent = isOfflineSaved(item) ? 'Bu nota offline için kayıtlı.' : 'İnternetin varken "Offline için kaydet"e bas, sonra internetsiz de açabilirsin.';
+  }
+  document.getElementById('pdfViewerOverlay').style.display = 'flex';
+  requestWakeLock();
+}
+
+document.getElementById('closePdfViewerBtn').addEventListener('click', () => {
+  document.getElementById('pdfViewerOverlay').style.display = 'none';
+  document.getElementById('pdfViewerFrame').src = '';
+  releaseWakeLock();
+});
+document.getElementById('pdfViewerOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'pdfViewerOverlay'){
+    document.getElementById('pdfViewerOverlay').style.display = 'none';
+    document.getElementById('pdfViewerFrame').src = '';
+    releaseWakeLock();
+  }
+});
+
+document.getElementById('saveOfflineBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('saveOfflineBtn');
+  const statusEl = document.getElementById('pdfViewerStatus');
+  const itemId = btn.dataset.itemId;
+  const embedUrl = btn.dataset.embedUrl;
+  const item = data.find(d => d.id === itemId);
+  if(!('serviceWorker' in navigator) || !navigator.serviceWorker.controller){
+    statusEl.textContent = 'Offline kaydetme şu an kullanılamıyor (sayfa henüz tam kurulmamış olabilir, bir kez daha açıp dene).';
+    return;
+  }
+  statusEl.textContent = 'Kaydediliyor…';
+  btn.disabled = true;
+  try{
+    const result = await cachePdfUrl(embedUrl);
+    if(result.ok){
+      if(item) markOfflineSaved(item, true);
+      statusEl.textContent = 'Kaydedildi ✓ — artık internetsiz de açabilirsin.';
+    } else {
+      statusEl.textContent = 'Kaydedilemedi: ' + (result.error || 'bilinmeyen hata') + '. İnternetin açık mı kontrol et.';
+    }
+  }catch(e){
+    statusEl.textContent = 'Kaydedilemedi: ' + e.message;
+  }
+  btn.disabled = false;
+});
+
+function cachePdfUrl(url){
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (event) => resolve(event.data);
+    navigator.serviceWorker.controller.postMessage({ action: 'CACHE_URL', url }, [channel.port2]);
+    setTimeout(() => resolve({ ok:false, error:'zaman aşımı' }), 20000);
+  });
 }
 
 function render(){
@@ -1019,6 +1166,11 @@ document.getElementById('rerollBtn').addEventListener('click', () => {
 
 <script>
 loadData();
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((e) => console.error('SW kayıt hatası:', e));
+  });
+}
 </script>
 
 </body>
