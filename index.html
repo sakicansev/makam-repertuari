@@ -227,8 +227,10 @@
     </div>
     <p id="pdfViewerStatus" class="ui" style="font-size:0.85rem; color:var(--ink-faint); margin:0.3rem 0 1rem;"></p>
     <div style="display:flex; flex-direction:column; gap:0.5rem;">
-      <button type="button" class="btn-ghost" id="saveOfflineBtn">Offline için kaydet</button>
       <a id="pdfOpenLink" href="#" class="btn-primary" style="text-decoration:none; display:block; text-align:center;">Notayı Aç</a>
+      <button type="button" class="btn-ghost" id="importPdfBtn">📁 Dosyalarımdan PDF içe aktar</button>
+      <button type="button" class="btn-ghost" id="saveOfflineBtn">Offline için kaydet (otomatik)</button>
+      <input type="file" id="importPdfInput" accept="application/pdf" style="display:none;">
     </div>
   </div>
 </div>
@@ -340,6 +342,49 @@ async function pushToGithub(token, payload){
       body: JSON.stringify(body)
     });
     if(putRes.ok) return { ok:true };
+    const err = await putRes.json().catch(() => ({}));
+    return { ok:false, reason: err.message || ('HTTP ' + putRes.status) };
+  }catch(e){
+    return { ok:false, reason: e.message };
+  }
+}
+
+// data.json dışında, repo içine herhangi bir ikili dosya (örn. içe aktarılan nota PDF'i)
+// yüklemek için genel amaçlı fonksiyon. base64Content ham (data: ön eki olmadan) olmalı.
+async function pushFileToGithub(token, path, base64Content, message){
+  const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`;
+  let sha = null;
+  try{
+    const getRes = await fetch(apiUrl, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    if(getRes.ok){
+      sha = (await getRes.json()).sha;
+    } else if(getRes.status !== 404){
+      const err = await getRes.json().catch(() => ({}));
+      return { ok:false, reason: err.message || ('HTTP ' + getRes.status) };
+    }
+  }catch(e){
+    return { ok:false, reason: e.message };
+  }
+
+  const body = { message: message || ('Dosya güncellendi: ' + path), content: base64Content };
+  if(sha) body.sha = sha;
+
+  try{
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if(putRes.ok){
+      const json = await putRes.json();
+      return { ok:true, rawUrl: `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${path}` };
+    }
     const err = await putRes.json().catch(() => ({}));
     return { ok:false, reason: err.message || ('HTTP ' + putRes.status) };
   }catch(e){
@@ -640,9 +685,9 @@ function openDetailModal(id){
   `;
 
   const linkRow = document.getElementById('detailLinkRow');
-  const savedBadge = item.link && isOfflineSaved(item) ? ' ✓ (offline kayıtlı)' : '';
+  const savedBadge = isOfflineSaved(item) ? ' ✓ (offline kayıtlı)' : '';
   linkRow.innerHTML = `
-    ${item.link ? `<button type="button" class="btn-ghost" id="openNotaBtn" data-id="${escapeAttr(item.id)}">Notayı aç${savedBadge}</button>` : ''}
+    <button type="button" class="btn-ghost" id="openNotaBtn" data-id="${escapeAttr(item.id)}">Notayı Aç / İçe Aktar${savedBadge}</button>
     <a href="${buildVersionSearchUrl(item)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">Diğer versiyonları ara ↗</a>
     ${!ytId ? `<a href="${buildYoutubeSearchUrl(item)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">YouTube'da ara ↗</a>` : ''}
   `;
@@ -652,7 +697,7 @@ function openDetailModal(id){
   document.getElementById('detailOverlay').style.display = 'flex';
 }
 
-// --- Offline nota görüntüleme / kaydetme ---
+// --- Offline nota görüntüleme / kaydetme / içe aktarma ---
 // NOT: Bu dosya ile sw.js'teki CACHE_NAME değeri AYNI olmalı, aksi halde
 // burada kaydedilen dosya service worker tarafından bulunamaz.
 const NOTA_CACHE_NAME = 'makam-repertuari-v2';
@@ -670,6 +715,61 @@ function isOfflineSaved(item){
 function markOfflineSaved(item, val){
   if(val) localStorage.setItem(offlineSavedKey(item), '1');
   else localStorage.removeItem(offlineSavedKey(item));
+}
+
+// --- Yerel PDF deposu (IndexedDB) ---
+// Kullanıcının telefonuna/bilgisayarına indirip "İçe Aktar" ile seçtiği PDF dosyaları
+// burada, bu cihazda saklanır. İnternet gerekmeden, GitHub'a bile bağlı olmadan açılabilir.
+const PDF_DB_NAME = 'makamNotalarDB';
+const PDF_STORE_NAME = 'pdfs';
+
+function openPdfDb(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(PDF_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(PDF_STORE_NAME, { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveLocalPdf(itemId, blob, fileName){
+  const db = await openPdfDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PDF_STORE_NAME, 'readwrite');
+    tx.objectStore(PDF_STORE_NAME).put({ id: itemId, blob, fileName, savedAt: Date.now() });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getLocalPdf(itemId){
+  const db = await openPdfDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PDF_STORE_NAME, 'readonly');
+    const req = tx.objectStore(PDF_STORE_NAME).get(itemId);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function hasLocalPdf(itemId){
+  try{
+    const rec = await getLocalPdf(itemId);
+    return !!rec;
+  }catch(e){
+    return false;
+  }
+}
+
+function blobToBase64(blob){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]); // data: önekini at
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 let wakeLock = null;
@@ -703,29 +803,58 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-function openPdfViewer(item){
+let viewerLocalBlob = null; // açık olan görüntüleyicide, varsa IndexedDB'den gelen blob
+
+async function openPdfViewer(item){
   document.getElementById('pdfViewerTitle').textContent = displayTitle(item);
   const openLink = document.getElementById('pdfOpenLink');
-  openLink.href = item.link;
-  openLink.removeAttribute('target'); // aynı sekmede aç ki offline önbellek devreye girebilsin
-
   const statusEl = document.getElementById('pdfViewerStatus');
   const saveBtn = document.getElementById('saveOfflineBtn');
+  const importBtn = document.getElementById('importPdfBtn');
   saveBtn.dataset.itemId = item.id;
-  saveBtn.dataset.url = item.link;
+  saveBtn.dataset.url = item.link || '';
+  importBtn.dataset.itemId = item.id;
+  viewerLocalBlob = null;
 
-  if(isDriveLink(item.link)){
-    saveBtn.disabled = true;
-    statusEl.textContent = 'Google Drive dosyaları offline için kaydedilemiyor, açmak için internet gerekiyor.';
+  const localRec = await getLocalPdf(item.id).catch(() => null);
+
+  if(localRec){
+    // Cihaza içe aktarılmış kopya var: internet olmadan da doğrudan bundan açılır.
+    viewerLocalBlob = localRec.blob;
+    openLink.href = '#';
+    saveBtn.style.display = 'none';
+    statusEl.textContent = '📁 Bu nota telefonuna/bilgisayarına içe aktarılmış — tamamen offline açılır.';
+  } else if(item.link){
+    openLink.href = item.link;
+    openLink.removeAttribute('target'); // aynı sekmede aç ki offline önbellek devreye girebilsin
+    if(isDriveLink(item.link)){
+      saveBtn.style.display = 'none';
+      statusEl.textContent = 'Google Drive dosyaları otomatik offline kaydedilemiyor. İstersen notayı açıp telefonuna/Dosyalarına kaydet, sonra aşağıdan içe aktar.';
+    } else {
+      saveBtn.style.display = '';
+      saveBtn.disabled = false;
+      statusEl.textContent = isOfflineSaved(item)
+        ? 'Bu nota otomatik offline kaydedilmiş.'
+        : 'İnternetin varken "Offline için kaydet"e basabilir, ya da notayı açıp telefonuna kaydettikten sonra aşağıdan içe aktarabilirsin.';
+    }
   } else {
-    saveBtn.disabled = false;
-    statusEl.textContent = isOfflineSaved(item)
-      ? 'Bu nota offline için kayıtlı — internetsizken de "Notayı Aç" ile açabilirsin.'
-      : 'İnternetin varken önce "Offline için kaydet"e bas, sonra internetsiz de açabilirsin.';
+    openLink.href = '#';
+    saveBtn.style.display = 'none';
+    statusEl.textContent = 'Bu eser için kayıtlı bir nota linki yok. Aşağıdan bir PDF içe aktarabilirsin.';
   }
+
   document.getElementById('pdfViewerOverlay').style.display = 'flex';
   requestWakeLock();
 }
+
+document.getElementById('pdfOpenLink').addEventListener('click', (e) => {
+  if(viewerLocalBlob){
+    e.preventDefault();
+    const blobUrl = URL.createObjectURL(viewerLocalBlob);
+    window.location.href = blobUrl;
+  }
+  // viewerLocalBlob yoksa normal <a href> navigasyonu kendi akışında devam eder.
+});
 
 document.getElementById('closePdfViewerBtn').addEventListener('click', () => {
   document.getElementById('pdfViewerOverlay').style.display = 'none';
@@ -752,14 +881,65 @@ document.getElementById('saveOfflineBtn').addEventListener('click', async () => 
   statusEl.textContent = 'Kaydediliyor…';
   btn.disabled = true;
   try{
+    // Dış sitelerden (CORS izni olmayan) gelen yanıtlar "opak" olur; cache.add()
+    // bunları "yanıt OK değil" diyerek reddeder. fetch + cache.put ise kabul eder.
+    const req = new Request(url, { mode: 'no-cors' });
+    const res = await fetch(req);
     const cache = await caches.open(NOTA_CACHE_NAME);
-    await cache.add(new Request(url, { mode: 'no-cors' }));
+    await cache.put(req, res);
     if(item) markOfflineSaved(item, true);
     statusEl.textContent = 'Kaydedildi ✓ — internetsizken "Notayı Aç" ile açabilirsin.';
   }catch(e){
     statusEl.textContent = 'Kaydedilemedi: ' + e.message + '. İnternetin açık olduğundan emin ol ve tekrar dene.';
   }
   btn.disabled = false;
+});
+
+document.getElementById('importPdfBtn').addEventListener('click', () => {
+  document.getElementById('importPdfInput').click();
+});
+
+document.getElementById('importPdfInput').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = ''; // aynı dosyayı tekrar seçebilmek için sıfırla
+  if(!file) return;
+
+  const itemId = document.getElementById('importPdfBtn').dataset.itemId;
+  const item = data.find(d => d.id === itemId);
+  if(!item) return;
+
+  const statusEl = document.getElementById('pdfViewerStatus');
+  statusEl.textContent = 'İçe aktarılıyor…';
+
+  try{
+    // 1) Her durumda bu cihaza yerel olarak kaydet — anında, hiçbir ayara gerek kalmadan offline çalışır.
+    await saveLocalPdf(item.id, file, file.name);
+    markOfflineSaved(item, true);
+    statusEl.textContent = '📁 Bu cihaza kaydedildi ✓ — internetsiz "Notayı Aç" ile açabilirsin.';
+
+    // 2) Bu cihazda bir GitHub yazma token'ı varsa (şu an sadece bilgisayarında olabilir),
+    //    dosyayı repo'ya da yükleyip tüm cihazlarla paylaşılmasını sağla.
+    const token = getToken();
+    if(token){
+      statusEl.textContent = '📁 Bu cihaza kaydedildi ✓. Şimdi GitHub\'a yükleniyor (tüm cihazlar görsün diye)…';
+      const base64 = await blobToBase64(file);
+      const path = `notalar/${item.id}.pdf`;
+      const result = await pushFileToGithub(token, path, base64, `Nota eklendi: ${displayTitle(item)}`);
+      if(result.ok){
+        await persistChange(() => {
+          const d = data.find(x => x.id === item.id);
+          if(d) d.link = result.rawUrl + '?v=' + Date.now();
+        });
+        statusEl.textContent = '✓ Bu cihaza kaydedildi VE GitHub\'a yüklendi — artık tüm cihazlardan erişilebilir.';
+      } else {
+        statusEl.textContent = '📁 Bu cihaza kaydedildi ✓ (yalnızca bu cihazda). GitHub\'a yükleme başarısız: ' + (result.reason || 'bilinmeyen hata');
+      }
+    } else {
+      statusEl.textContent += ' (Not: Sadece bu cihazda kayıtlı. Diğer cihazlarda da görünmesi için aynı dosyayı GitHub Token tanımlı olan cihazdan içe aktar.)';
+    }
+  }catch(err){
+    statusEl.textContent = 'İçe aktarma başarısız: ' + err.message;
+  }
 });
 
 function render(){
