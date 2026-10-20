@@ -156,6 +156,66 @@
   }
   .modal-actions{display:flex; gap:0.6rem; margin-top:0.4rem;}
 
+  .tabs{display:flex; justify-content:center; gap:0.5rem; margin-top:1.1rem;}
+  .tab{
+    background:transparent; color:var(--ink-dim); border:0.5px solid var(--border-strong);
+    padding:0.45rem 1.3rem; border-radius:20px; font-size:0.85rem;
+  }
+  .tab:hover{color:var(--ink); border-color:var(--gold-dim);}
+  .tab.active{background:var(--panel-2); color:var(--gold-bright); border-color:var(--gold);}
+
+  .j-composer{
+    background:var(--panel); border:0.5px solid var(--border-strong); border-radius:10px;
+    padding:1rem 1.1rem; margin-bottom:1rem;
+  }
+  .j-row{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.6rem;}
+  .j-composer input, .j-composer select, .j-composer textarea{
+    background:var(--panel-2); color:var(--ink); border:0.5px solid var(--border-strong);
+    border-radius:6px; padding:0.55rem 0.7rem; font-family:'Inter',sans-serif; font-size:0.88rem;
+    width:100%;
+  }
+  .j-row input, .j-row select{flex:1; min-width:150px; width:auto;}
+  .j-composer textarea{min-height:110px; resize:vertical; line-height:1.5; margin-bottom:0.6rem; display:block;}
+  .j-composer input#j-tags{margin-bottom:0.7rem; display:block;}
+  .j-composer input:focus, .j-composer select:focus, .j-composer textarea:focus{outline:none; border-color:var(--gold);}
+  .j-actions{display:flex; gap:0.6rem; justify-content:flex-end;}
+  .j-status{font-size:0.78rem; color:var(--ink-faint); margin:0 0 1rem; line-height:1.5;}
+  .j-status.ok{color:var(--teal);}
+  .j-status.warn{color:var(--gold-bright);}
+  .j-tagbar{display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem;}
+  .j-tag{
+    font-family:'Inter',sans-serif; font-size:0.76rem; color:var(--ink-dim); background:var(--panel);
+    border:0.5px solid var(--border-strong); border-radius:12px; padding:0.2rem 0.65rem; cursor:pointer;
+  }
+  .j-tag.active{color:var(--gold-bright); border-color:var(--gold); background:var(--panel-2);}
+  .j-entry{
+    background:var(--panel); border:0.5px solid var(--border); border-radius:10px;
+    padding:0.9rem 1.1rem; margin-bottom:0.75rem;
+  }
+  .j-meta{
+    font-family:'Inter',sans-serif; font-size:0.76rem; color:var(--gold-dim); margin-bottom:0.45rem;
+    display:flex; justify-content:space-between; gap:0.5rem; flex-wrap:wrap;
+  }
+  .j-local{color:var(--ink-faint); font-style:italic;}
+  .j-text{font-size:1.08rem; line-height:1.55; color:var(--ink); margin:0 0 0.6rem; white-space:pre-wrap; word-break:break-word;}
+  .j-chips{display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.4rem;}
+  .j-chip{
+    font-family:'Inter',sans-serif; font-size:0.74rem; border-radius:10px; padding:0.15rem 0.6rem;
+    color:var(--ink-dim); background:var(--panel-3); border:0.5px solid var(--border);
+  }
+  .j-chip.eser{color:var(--teal); background:var(--teal-bg); border-color:var(--teal-border); cursor:pointer;}
+  .j-entry-actions{display:flex; gap:1rem; margin-top:0.2rem;}
+  .j-link{
+    background:none; border:none; padding:0; color:var(--ink-faint); font-size:0.76rem;
+    text-decoration:underline; text-decoration-style:dotted; cursor:pointer;
+  }
+  .j-link:hover{color:var(--gold);}
+  .j-link.danger:hover{color:var(--danger);}
+  .j-snippet{
+    margin:1rem 0 0.4rem; padding:0.7rem 0.9rem; border-left:2px solid var(--gold-dim);
+    background:var(--panel);  border-radius:0 8px 8px 0;
+  }
+
   @media (max-width:640px){
     .layout{flex-direction:column;}
     .sidebar{
@@ -164,6 +224,12 @@
     .side-item{border-left:none; border-bottom:2px solid transparent;}
     .side-item.active{border-left:none; border-bottom:2px solid var(--gold);}
   }
+  .usul-box{margin:1rem 0; padding:.8rem .9rem; background:var(--panel-2); border:0.5px solid var(--gold-dim); border-radius:10px;}
+  .usul-title{font-size:.78rem; color:var(--gold-bright); margin:0 0 .5rem; letter-spacing:.02em;}
+  .usul-scroll{overflow-x:auto; padding-bottom:.2rem;}
+  .usul-ctl{display:flex; gap:.8rem; align-items:center; margin-top:.6rem; font-size:.78rem; color:var(--ink-dim); flex-wrap:wrap;}
+  .usul-ctl input[type=range]{vertical-align:middle; accent-color:var(--gold); width:110px;}
+  .usul-chip{display:inline-block; font-size:.68rem; color:var(--teal); border:0.5px solid var(--teal-border); border-radius:10px; padding:.05rem .45rem; margin-left:.35rem;}
 </style>
 </head>
 <body>
@@ -183,6 +249,10 @@
         <circle cx="184" cy="11" r="1.4" fill="#8f7439"/>
         <circle cx="216" cy="11" r="1.4" fill="#8f7439"/>
       </svg>
+    </div>
+    <div class="tabs ui" id="viewTabs">
+      <button type="button" class="tab active" data-view="rep">Repertuar</button>
+      <button type="button" class="tab" data-view="gunluk">Günlük</button>
     </div>
   </header>
 
@@ -205,6 +275,26 @@
     <nav class="sidebar ui" id="sidebar"></nav>
     <main class="content" id="content"></main>
   </div>
+
+  <section id="journalView" style="display:none;">
+    <div class="j-composer">
+      <div class="j-row">
+        <input class="ui" type="date" id="j-date">
+        <select class="ui" id="j-eser"><option value="">Eser seç (isteğe bağlı)</option></select>
+      </div>
+      <textarea class="ui" id="j-text" placeholder="Bugün ney'le ne oldu? Zorlandığın yer, hocanın söylediği, nasıl hissettirdi…"></textarea>
+      <input class="ui" id="j-tags" list="j-tags-list" type="text" placeholder="Etiketler, virgülle ayır: nefes, ses, parmak, hoca dersi">
+      <datalist id="j-tags-list"></datalist>
+      <div class="form-error" id="j-error" style="display:none; margin:0 0 0.6rem;"></div>
+      <div class="j-actions">
+        <button type="button" class="btn-ghost" id="j-cancel" style="display:none;">Vazgeç</button>
+        <button type="button" class="btn-primary" id="j-save">Kaydet</button>
+      </div>
+    </div>
+    <p class="ui j-status" id="j-status"></p>
+    <div class="j-tagbar ui" id="j-tagbar"></div>
+    <div id="j-list"></div>
+  </section>
 
 </div>
 
@@ -230,6 +320,7 @@
       <a id="pdfOpenLink" href="#" class="btn-primary" style="text-decoration:none; display:block; text-align:center;">Notayı Aç</a>
       <button type="button" class="btn-ghost" id="importPdfBtn">📁 Dosyalarımdan PDF içe aktar</button>
       <button type="button" class="btn-ghost" id="saveOfflineBtn">Offline için kaydet (otomatik)</button>
+      <button type="button" class="btn-danger" id="deletePdfBtn" style="display:none; margin-right:0;">🗑 İçe aktarılan PDF'i sil</button>
       <input type="file" id="importPdfInput" accept="application/pdf" style="display:none;">
     </div>
   </div>
@@ -245,6 +336,10 @@
       <label>Tür
         <input id="f-tur" list="turList" type="text" placeholder="Örn. Peşrev, Saz Semai, Sözlü, Âyin-i Şerîf...">
         <datalist id="turList"></datalist>
+      </label>
+      <label>Usûl (düm-tek şeması için)
+        <input id="f-usul" list="usulList" type="text" placeholder="Örn. Aksak, Curcuna, Sofyan  —  ya da özel: Düm2 Tek1 Tek1">
+        <datalist id="usulList"></datalist>
       </label>
       <label>Makam
         <input id="f-makam" list="makamList" type="text" placeholder="Örn. Uşşak">
@@ -315,7 +410,8 @@ async function pushToGithub(token, payload){
   let sha = null;
   try{
     const getRes = await fetch(apiUrl, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+      cache: 'no-store'
     });
     if(getRes.ok){
       sha = (await getRes.json()).sha;
@@ -356,7 +452,8 @@ async function pushFileToGithub(token, path, base64Content, message){
   let sha = null;
   try{
     const getRes = await fetch(apiUrl, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+      cache: 'no-store'
     });
     if(getRes.ok){
       sha = (await getRes.json()).sha;
@@ -387,6 +484,31 @@ async function pushFileToGithub(token, path, base64Content, message){
     }
     const err = await putRes.json().catch(() => ({}));
     return { ok:false, reason: err.message || ('HTTP ' + putRes.status) };
+  }catch(e){
+    return { ok:false, reason: e.message };
+  }
+}
+
+// Repo içindeki bir dosyayı sil (örn. yanlış yüklenen nota PDF'i).
+async function deleteFileFromGithub(token, path, message){
+  const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`;
+  const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' };
+  try{
+    const getRes = await fetch(apiUrl, { headers, cache: 'no-store' });
+    if(getRes.status === 404) return { ok:true, missing:true };
+    if(!getRes.ok){
+      const err = await getRes.json().catch(() => ({}));
+      return { ok:false, reason: err.message || ('HTTP ' + getRes.status) };
+    }
+    const sha = (await getRes.json()).sha;
+    const delRes = await fetch(apiUrl, {
+      method: 'DELETE',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: message || ('Dosya silindi: ' + path), sha })
+    });
+    if(delRes.ok) return { ok:true };
+    const err = await delRes.json().catch(() => ({}));
+    return { ok:false, reason: err.message || ('HTTP ' + delRes.status) };
   }catch(e){
     return { ok:false, reason: e.message };
   }
@@ -582,7 +704,7 @@ function cardHtml(item){
     : '';
   return `<div class="card" data-id="${item.id}">
       ${item.tur ? `<span class="badge">${escapeHtml(item.tur)}</span>` : ''}
-      <p class="eser-name">${escapeHtml(displayTitle(item))}</p>
+      <p class="eser-name">${escapeHtml(displayTitle(item))}${item.usul ? `<span class="usul-chip ui">${escapeHtml(item.usul.length>18?item.usul.slice(0,18)+'…':item.usul)}</span>` : ''}</p>
       ${item.bestekar ? `<p class="bestekar">${escapeHtml(item.bestekar)}</p>` : ''}
       ${item.ogreten ? `<p class="bestekar" style="color:var(--gold-dim);">Öğreten: ${escapeHtml(item.ogreten)}</p>` : ''}
       ${notlarRow}
@@ -677,6 +799,8 @@ function openDetailModal(id){
         <p style="font-size:0.95rem; color:var(--ink); margin:0; ${label==='Notlar' ? 'font-style:italic;' : ''}">${escapeHtml(val)}</p>
       </div>
     `).join('')}
+    ${usulBlockHtml(item)}
+    ${journalSnippetHtml(item.id)}
     ${ytId ? `
       <div style="margin:1rem 0; border-radius:10px; overflow:hidden; aspect-ratio:16/9;">
         <iframe width="100%" height="100%" src="https://www.youtube.com/embed/${ytId}" title="YouTube video" frameborder="0" allowfullscreen style="display:block;"></iframe>
@@ -684,15 +808,19 @@ function openDetailModal(id){
     ` : ''}
   `;
 
+  mountUsul(item);
+
   const linkRow = document.getElementById('detailLinkRow');
   const savedBadge = isOfflineSaved(item) ? ' ✓ (offline kayıtlı)' : '';
   linkRow.innerHTML = `
     <button type="button" class="btn-ghost" id="openNotaBtn" data-id="${escapeAttr(item.id)}">Notayı Aç / İçe Aktar${savedBadge}</button>
+    <button type="button" class="btn-ghost" id="journalForBtn">✍ Bu eser için günlüğe yaz</button>
     <a href="${buildVersionSearchUrl(item)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">Diğer versiyonları ara ↗</a>
     ${!ytId ? `<a href="${buildYoutubeSearchUrl(item)}" target="_blank" rel="noopener" class="btn-ghost" style="text-decoration:none; display:inline-block; text-align:center;">YouTube'da ara ↗</a>` : ''}
   `;
   const openNotaBtn = document.getElementById('openNotaBtn');
   if(openNotaBtn) openNotaBtn.addEventListener('click', () => openPdfViewer(item));
+  document.getElementById('journalForBtn').addEventListener('click', () => startJournalFor(item.id));
 
   document.getElementById('detailOverlay').style.display = 'flex';
 }
@@ -751,6 +879,16 @@ async function getLocalPdf(itemId){
     const req = tx.objectStore(PDF_STORE_NAME).get(itemId);
     req.onsuccess = () => resolve(req.result || null);
     req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteLocalPdf(itemId){
+  const db = await openPdfDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PDF_STORE_NAME, 'readwrite');
+    tx.objectStore(PDF_STORE_NAME).delete(itemId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 }
 
@@ -815,6 +953,10 @@ async function openPdfViewer(item){
   saveBtn.dataset.url = item.link || '';
   importBtn.dataset.itemId = item.id;
   viewerLocalBlob = null;
+  const deleteBtn = document.getElementById('deletePdfBtn');
+  deleteBtn.style.display = 'none';
+  deleteBtn.dataset.itemId = item.id;
+  deleteBtn.textContent = '🗑 İçe aktarılan PDF\'i sil';
 
   const localRec = await getLocalPdf(item.id).catch(() => null);
 
@@ -823,19 +965,20 @@ async function openPdfViewer(item){
     viewerLocalBlob = localRec.blob;
     openLink.href = '#';
     saveBtn.style.display = 'none';
-    statusEl.textContent = '📁 Bu nota telefonuna/bilgisayarına içe aktarılmış — tamamen offline açılır.';
+    deleteBtn.style.display = '';
+    statusEl.textContent = '📁 Bu eser için cihaza içe aktarılmış bir PDF var (' + (localRec.fileName || 'adsız') + ') — tamamen offline açılır. Yanlış dosyaysa aşağıdan silebilir, ya da yenisini içe aktarabilirsin.';
   } else if(item.link){
     openLink.href = item.link;
     openLink.removeAttribute('target'); // aynı sekmede aç ki offline önbellek devreye girebilsin
     if(isDriveLink(item.link)){
       saveBtn.style.display = 'none';
-      statusEl.textContent = 'Google Drive dosyaları otomatik offline kaydedilemiyor. İstersen notayı açıp telefonuna/Dosyalarına kaydet, sonra aşağıdan içe aktar.';
+      statusEl.textContent = 'Google Drive dosyaları otomatik offline kaydedilemiyor. Önce "Notayı Aç" ile aç, paylaş ikonundan "Dosyalar\'a Kaydet" de, sonra buraya dönüp "İçe aktar"a bas ve o dosyayı seç.';
     } else {
       saveBtn.style.display = '';
       saveBtn.disabled = false;
       statusEl.textContent = isOfflineSaved(item)
         ? 'Bu nota otomatik offline kaydedilmiş.'
-        : 'İnternetin varken "Offline için kaydet"e basabilir, ya da notayı açıp telefonuna kaydettikten sonra aşağıdan içe aktarabilirsin.';
+        : 'Offline için iki yol: (1) "Offline için kaydet"e bas, ya da (2) "Notayı Aç" ile aç, paylaş ikonundan "Dosyalar\'a Kaydet" de, buraya dönüp "İçe aktar"la o dosyayı seç. (Uygulama linkteki dosyayı kendi alamaz; tarayıcı buna izin vermiyor, dosyayı sen seçmelisin.)';
     }
   } else {
     openLink.href = '#';
@@ -895,6 +1038,63 @@ document.getElementById('saveOfflineBtn').addEventListener('click', async () => 
   btn.disabled = false;
 });
 
+let deletePdfArmedTimer = null;
+document.getElementById('deletePdfBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('deletePdfBtn');
+  const statusEl = document.getElementById('pdfViewerStatus');
+  const itemId = btn.dataset.itemId;
+  const item = data.find(d => d.id === itemId);
+  if(!item) return;
+
+  // İki dokunuşla onay: yanlışlıkla silmeyi önler (tarayıcı diyaloğu kullanmadan).
+  if(!deletePdfArmedTimer){
+    btn.textContent = 'Emin misin? Silmek için tekrar dokun';
+    deletePdfArmedTimer = setTimeout(() => {
+      deletePdfArmedTimer = null;
+      btn.textContent = '🗑 İçe aktarılan PDF\'i sil';
+    }, 4000);
+    return;
+  }
+  clearTimeout(deletePdfArmedTimer);
+  deletePdfArmedTimer = null;
+  btn.disabled = true;
+  statusEl.textContent = 'Siliniyor…';
+
+  try{
+    await deleteLocalPdf(item.id);
+    markOfflineSaved(item, false);
+    viewerLocalBlob = null;
+    let note = '';
+
+    // Bu eserin linki, daha önce GitHub'a yüklenmiş notalar/<id>.pdf ise onu da temizle.
+    const ownPath = `notalar/${item.id}.pdf`;
+    if((item.link || '').includes('/' + ownPath)){
+      const token = getToken();
+      if(token){
+        const r = await deleteFileFromGithub(token, ownPath, `Nota silindi: ${displayTitle(item)}`);
+        if(r.ok){
+          await persistChange(() => {
+            const d = data.find(x => x.id === item.id);
+            if(d) d.link = '';
+          });
+          note = ' GitHub\'daki kopyası ve eserin nota linki de temizlendi.';
+        } else {
+          note = ' (GitHub\'daki kopyası silinemedi: ' + (r.reason || 'bilinmeyen hata') + ')';
+        }
+      } else {
+        note = ' (GitHub\'daki kopyası duruyor; silmek için bu cihaza GitHub Token tanıtmalısın.)';
+      }
+    }
+    statusEl.textContent = 'Silindi ✓.' + note;
+    btn.style.display = 'none';
+    document.getElementById('saveOfflineBtn').style.display = 'none';
+    render();
+  }catch(e){
+    statusEl.textContent = 'Silinemedi: ' + e.message;
+  }
+  btn.disabled = false;
+});
+
 document.getElementById('importPdfBtn').addEventListener('click', () => {
   document.getElementById('importPdfInput').click();
 });
@@ -947,6 +1147,7 @@ function render(){
   renderContent();
   renderMakamDatalist();
   renderSyncBadge();
+  if(typeof refreshJournalUi === 'function') refreshJournalUi();
 }
 
 function uniqueSorted(field){
@@ -960,6 +1161,7 @@ function renderMakamDatalist(){
   };
   fill('makamList', getMakamlar());
   fill('turList', uniqueSorted('tur'));
+  fill('usulList', Array.from(new Set(USULLER.map(u=>u.ad).concat(uniqueSorted('usul')))));
   fill('bestekarList', uniqueSorted('bestekar'));
   fill('ogretenList', uniqueSorted('ogreten'));
 }
@@ -980,6 +1182,7 @@ function openModal(id){
     document.getElementById('f-eser').value = item.eser || '';
     document.getElementById('f-tur').value = item.tur || '';
     document.getElementById('f-makam').value = item.makam || '';
+    document.getElementById('f-usul').value = item.usul || '';
     document.getElementById('f-bestekar').value = item.bestekar || '';
     document.getElementById('f-ogreten').value = item.ogreten || '';
     document.getElementById('f-link').value = item.link || '';
@@ -1005,6 +1208,7 @@ document.getElementById('addBtn').addEventListener('click', () => openModal(null
 document.getElementById('cancelBtn').addEventListener('click', closeModal);
 
 document.getElementById('closeDetailBtn').addEventListener('click', () => {
+  usulStop();
   document.getElementById('detailOverlay').style.display = 'none';
 });
 document.getElementById('detailOverlay').addEventListener('click', (e) => {
@@ -1056,6 +1260,7 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
     eser,
     makam,
     tur: document.getElementById('f-tur').value.trim(),
+    usul: document.getElementById('f-usul').value.trim(),
     bestekar: document.getElementById('f-bestekar').value.trim(),
     ogreten: document.getElementById('f-ogreten').value.trim(),
     link: document.getElementById('f-link').value.trim(),
@@ -1092,7 +1297,7 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
 
 document.getElementById('search').addEventListener('input', (e) => {
   searchText = e.target.value;
-  renderContent();
+  if(currentView === 'gunluk') renderJournal(); else renderContent();
 });
 
 document.getElementById('sortSelect').addEventListener('change', (e) => {
@@ -1183,8 +1388,9 @@ document.getElementById('importBackupBtn').addEventListener('click', async () =>
   <div class="modal">
     <h2>GitHub Token</h2>
     <p class="ui" style="font-size:0.8rem; color:var(--ink-dim); margin:-0.4rem 0 1rem; line-height:1.5;">
-      Bu token'ı <strong>sadece bu bilgisayara</strong> tanıt. Başka hiçbir cihaza girmene gerek yok —
-      diğerleri zaten listeni otomatik okuyor. Sadece bu cihazdan eklediklerin GitHub'a yazılsın istiyorsan bunu doldur.
+      Bu cihazdan yazdıkların (eser listesi, günlük, içe aktarılan notalar) GitHub'a gitsin ve her cihazda görünsün
+      istiyorsan token'ı bu cihaza tanıt (bilgisayar ve telefon için ayrı ayrı). Token tanıtmadığın cihaz sadece okur;
+      günlüğe yazdıkların o cihazda kalır.
     </p>
     <label class="ui" style="display:block; font-size:0.8rem; color:var(--ink-dim); margin-bottom:0.5rem;">
       Personal Access Token
@@ -1252,6 +1458,7 @@ document.getElementById('removeTokenBtn').addEventListener('click', () => {
   clearToken();
   document.getElementById('tokenOverlay').style.display = 'none';
   renderSyncBadge();
+  refreshJournalUi();
   showToast('Token kaldırıldı. Bu cihaz artık GitHub\'a yazmayacak, sadece okuyacak.');
 });
 
@@ -1268,7 +1475,9 @@ document.getElementById('saveTokenBtn').addEventListener('click', async () => {
   btn.disabled = true;
   errEl.style.display = 'none';
 
-  const res = await pushToGithub(token, data);
+  // Token'ı doğrularken eser listesinin (data.json) üzerine yazmıyoruz: yazma iznini,
+  // zararsız ve birleştirmeli çalışan günlük dosyasıyla deniyoruz.
+  const res = await pushJournal(token);
 
   btn.textContent = 'Kaydet';
   btn.disabled = false;
@@ -1278,6 +1487,8 @@ document.getElementById('saveTokenBtn').addEventListener('click', async () => {
     dataSource = 'github';
     document.getElementById('tokenOverlay').style.display = 'none';
     renderSyncBadge();
+    saveLocalJournal();
+    refreshJournalUi();
     showToast('Token kaydedildi. Bu cihaz artık GitHub\'a yazabiliyor.');
   } else {
     errEl.textContent = 'Bağlanılamadı: ' + res.reason + ' (token izinlerini ve repo adını kontrol et)';
@@ -1325,7 +1536,583 @@ document.getElementById('rerollBtn').addEventListener('click', () => {
 </script>
 
 <script>
+// ===== GUNLUK-PURE-BEGIN =====
+const JOURNAL_KEY = 'gunluk';
+const JOURNAL_FILE = 'gunluk.json';
+let journal = [];        // tüm kayıtlar (silinenlerin "mezar taşı" kaydı dahil)
+let journalRemote = [];  // GitHub'da en son bilinen hâli
+
+function b64EncodeUtf8(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+}
+function b64DecodeUtf8(b64){
+  const bin = atob(String(b64).replace(/\s/g, ''));
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function journalSort(arr){
+  return arr.sort((a, b) =>
+    (b.tarih || '').localeCompare(a.tarih || '') || (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+// İki cihazdaki kayıtları birleştirir: aynı id'de updatedAt'i yeni olan kazanır.
+// Silme, silindi:true işaretli kayıtla yapılır; böylece silme de cihazlar arası yayılır.
+function mergeJournal(a, b){
+  const map = new Map();
+  [...(a || []), ...(b || [])].forEach(e => {
+    if(!e || !e.id) return;
+    const cur = map.get(e.id);
+    if(!cur || (e.updatedAt || 0) >= (cur.updatedAt || 0)) map.set(e.id, e);
+  });
+  return journalSort(Array.from(map.values()));
+}
+
+function journalSig(arr){
+  return JSON.stringify(arr.map(e => e.id + ':' + (e.updatedAt || 0)).sort());
+}
+function journalEqual(a, b){ return journalSig(a) === journalSig(b); }
+
+function countUnsynced(local, remote){
+  const m = new Map((remote || []).map(e => [e.id, e.updatedAt || 0]));
+  return (local || []).filter(e => !m.has(e.id) || m.get(e.id) < (e.updatedAt || 0)).length;
+}
+
+function parseTags(str){
+  const out = [];
+  String(str || '').split(',').forEach(t => {
+    const v = t.trim().toLocaleLowerCase('tr');
+    if(v && !out.includes(v)) out.push(v);
+  });
+  return out.slice(0, 8);
+}
+
+async function fetchRemoteJournal(){
+  const url = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${JOURNAL_FILE}?t=${Date.now()}`;
+  try{
+    const r = await fetch(url, { cache: 'no-store' });
+    if(r.status === 404) return [];
+    if(r.ok){
+      const j = await r.json();
+      return Array.isArray(j) ? j : null;
+    }
+  }catch(e){ /* çevrimdışı */ }
+  return null;
+}
+
+// Uzaktaki günlüğü taze okur, yerelle birleştirir, geri yazar. Başka bir cihaz arada
+// yazdıysa (sha uyuşmazlığı: 409/422) baştan okuyup birleştirerek 3 kez dener.
+async function pushJournal(token){
+  const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${JOURNAL_FILE}`;
+  const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' };
+  let lastReason = '';
+  for(let attempt = 0; attempt < 3; attempt++){
+    let remote = [], sha = null;
+    try{
+      const g = await fetch(apiUrl, { headers, cache: 'no-store' });
+      if(g.status === 404){
+        remote = []; sha = null;
+      } else if(g.ok){
+        const j = await g.json();
+        sha = j.sha;
+        if(j.content){
+          const txt = b64DecodeUtf8(j.content);
+          remote = txt.trim() ? JSON.parse(txt) : [];
+        } else if(j.size > 0){
+          return { ok:false, reason:'günlük dosyası çok büyük' };
+        }
+      } else {
+        const err = await g.json().catch(() => ({}));
+        return { ok:false, reason: err.message || ('HTTP ' + g.status) };
+      }
+    }catch(e){
+      return { ok:false, reason: e.message };
+    }
+    if(!Array.isArray(remote)) remote = [];
+
+    const merged = mergeJournal(remote, journal);
+    const body = {
+      message: 'Günlük güncellendi',
+      content: b64EncodeUtf8(JSON.stringify(merged, null, 1))
+    };
+    if(sha) body.sha = sha;
+    try{
+      const p = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if(p.ok){
+        // Gönderim sürerken eklenen yerel kayıtlar kaybolmasın diye değiştirmek yerine birleştir.
+        journal = mergeJournal(journal, merged);
+        journalRemote = merged;
+        return { ok:true };
+      }
+      const err = await p.json().catch(() => ({}));
+      lastReason = err.message || ('HTTP ' + p.status);
+      if(p.status === 409 || p.status === 422) continue;
+      return { ok:false, reason: lastReason };
+    }catch(e){
+      return { ok:false, reason: e.message };
+    }
+  }
+  return { ok:false, reason: lastReason || 'çakışma' };
+}
+// ===== GUNLUK-PURE-END =====
+
+// ===== GÜNLÜK: arayüz =====
+let currentView = 'rep';
+let editingJournalId = null;
+let journalTag = 'all';
+let journalNet = 'unknown';      // 'unknown' | 'ok' | 'offline'
+let journalLastError = '';
+let journalDeleteArmed = null;
+let journalPushChain = Promise.resolve();
+
+function jEl(id){ return document.getElementById(id); }
+
+function loadLocalJournal(){
+  try{
+    const arr = JSON.parse(localStorage.getItem(JOURNAL_KEY) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function saveLocalJournal(){
+  try{ localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal)); }catch(e){ console.error('Günlük yerel kaydı başarısız:', e); }
+}
+
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatJDate(s){
+  const d = new Date(s + 'T12:00:00');
+  return isNaN(d) ? s : d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
+function formatJMonth(s){
+  const d = new Date(s + 'T12:00:00');
+  return isNaN(d) ? s : d.toLocaleDateString('tr-TR', { month:'long', year:'numeric' });
+}
+function liveEntries(){ return journal.filter(e => !e.silindi); }
+
+function queueJournalPush(){
+  const token = getToken();
+  if(!token) return Promise.resolve({ ok:false, reason:'token yok' });
+  journalPushChain = journalPushChain.then(async () => {
+    const r = await pushJournal(token);
+    journalLastError = r.ok ? '' : (r.reason || 'bilinmeyen hata');
+    if(r.ok) journalNet = 'ok';
+    saveLocalJournal();
+    refreshJournalUi();
+    return r;
+  }).catch(e => ({ ok:false, reason:e.message }));
+  return journalPushChain;
+}
+
+async function syncJournal(){
+  const remote = await fetchRemoteJournal();
+  if(remote === null){
+    journalNet = 'offline';
+    refreshJournalUi();
+    return;
+  }
+  journalNet = 'ok';
+  journalRemote = remote;
+  journal = mergeJournal(journal, remote);
+  saveLocalJournal();
+  refreshJournalUi();
+  if(getToken() && countUnsynced(journal, journalRemote) > 0){
+    await queueJournalPush();
+  }
+}
+
+function initJournal(){
+  journal = loadLocalJournal();
+  jEl('j-date').value = todayStr();
+  syncJournal();
+  window.addEventListener('online', () => { syncJournal(); });
+}
+
+function renderJournalStatus(){
+  const el = jEl('j-status');
+  const token = !!getToken();
+  const unsynced = countUnsynced(journal, journalRemote);
+  let text, cls = '';
+  if(journalNet === 'offline'){
+    text = 'Çevrimdışı — kayıtların bu cihazda duruyor' + (token ? '; internet gelince GitHub\'a gönderilecek.' : '.');
+    cls = 'warn';
+  } else if(token && journalLastError){
+    text = 'GitHub\'a gönderilemedi: ' + journalLastError + ' — kayıtların bu cihazda güvende, tekrar denenecek.';
+    cls = 'warn';
+  } else if(token){
+    text = unsynced > 0 ? 'GitHub\'a gönderiliyor…' : 'GitHub\'a yazılıyor ✓ — kayıtların her cihazda görünür.';
+    cls = unsynced > 0 ? '' : 'ok';
+  } else if(unsynced > 0){
+    text = unsynced + ' kaydın yalnızca bu cihazda. Başka cihazlarda da görünsün istiyorsan bu cihaza "GitHub Token" tanıt.';
+    cls = 'warn';
+  } else {
+    text = 'GitHub\'dan okunuyor. Bu cihaza "GitHub Token" tanıtırsan yazdıkların her cihazda görünür.';
+  }
+  el.textContent = text;
+  el.className = 'ui j-status ' + cls;
+}
+
+function renderJournalEserOptions(){
+  const sel = jEl('j-eser');
+  const cur = sel.value;
+  const byMakam = {};
+  data.forEach(d => { const k = d.makam || '—'; (byMakam[k] = byMakam[k] || []).push(d); });
+  let html = '<option value="">Eser seç (isteğe bağlı)</option>';
+  Object.keys(byMakam).sort(trSort).forEach(m => {
+    html += `<optgroup label="${escapeAttr(m)}">`;
+    byMakam[m].sort((a, b) => trSort(displayTitle(a), displayTitle(b))).forEach(d => {
+      html += `<option value="${escapeAttr(d.id)}">${escapeHtml(displayTitle(d))}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  sel.innerHTML = html;
+  sel.value = cur;
+}
+
+function allJournalTags(){
+  const counts = {};
+  liveEntries().forEach(e => (e.etiketler || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+  return counts;
+}
+
+function renderJournalTagbar(){
+  const counts = allJournalTags();
+  const names = Object.keys(counts).sort(trSort);
+  jEl('j-tags-list').innerHTML = names.map(n => `<option value="${escapeAttr(n)}"></option>`).join('');
+  if(names.length === 0){ jEl('j-tagbar').innerHTML = ''; return; }
+  if(journalTag !== 'all' && !counts[journalTag]) journalTag = 'all';
+  let html = `<span class="j-tag ${journalTag==='all'?'active':''}" data-tag="all">Tümü</span>`;
+  names.forEach(n => {
+    html += `<span class="j-tag ${journalTag===n?'active':''}" data-tag="${escapeAttr(n)}">#${escapeHtml(n)} · ${counts[n]}</span>`;
+  });
+  jEl('j-tagbar').innerHTML = html;
+  jEl('j-tagbar').querySelectorAll('.j-tag').forEach(el => {
+    el.addEventListener('click', () => { journalTag = el.getAttribute('data-tag'); renderJournal(); });
+  });
+}
+
+function journalEntryMatches(e, q){
+  if(journalTag !== 'all' && !(e.etiketler || []).includes(journalTag)) return false;
+  if(!q) return true;
+  const eser = data.find(d => d.id === e.eserId);
+  const hay = [e.metin, (e.etiketler || []).join(' '), eser ? displayTitle(eser) + ' ' + eser.makam : '']
+    .join(' ').toLocaleLowerCase('tr');
+  return hay.includes(q);
+}
+
+function renderJournal(){
+  renderJournalEserOptions();
+  renderJournalTagbar();
+  renderJournalStatus();
+
+  const q = searchText.trim().toLocaleLowerCase('tr');
+  const items = journalSort(liveEntries().filter(e => journalEntryMatches(e, q)));
+  const list = jEl('j-list');
+
+  if(items.length === 0){
+    list.innerHTML = `<div class="empty">${liveEntries().length === 0
+      ? 'Henüz kayıt yok. İlk satırı yukarıya yaz.'
+      : 'Aradığın kritere uyan kayıt bulunamadı.'}</div>`;
+    return;
+  }
+
+  const unsyncedIds = new Set();
+  const rm = new Map(journalRemote.map(e => [e.id, e.updatedAt || 0]));
+  journal.forEach(e => { if(!rm.has(e.id) || rm.get(e.id) < (e.updatedAt || 0)) unsyncedIds.add(e.id); });
+
+  let html = '', lastMonth = '';
+  items.forEach(e => {
+    const month = formatJMonth(e.tarih);
+    if(month !== lastMonth){ html += `<h2 class="group-heading">${escapeHtml(month)}</h2>`; lastMonth = month; }
+    const eser = e.eserId ? data.find(d => d.id === e.eserId) : null;
+    const chips = [];
+    if(e.eserId){
+      chips.push(eser
+        ? `<span class="j-chip eser" data-eser="${escapeAttr(eser.id)}">♪ ${escapeHtml(displayTitle(eser))} · ${escapeHtml(eser.makam || '')}</span>`
+        : `<span class="j-chip">(silinmiş eser)</span>`);
+    }
+    (e.etiketler || []).forEach(t => chips.push(`<span class="j-chip">#${escapeHtml(t)}</span>`));
+    const armed = journalDeleteArmed === e.id;
+    html += `<article class="j-entry" data-id="${escapeAttr(e.id)}">
+      <div class="j-meta"><span>${escapeHtml(formatJDate(e.tarih))}</span>${unsyncedIds.has(e.id) ? '<span class="j-local">yalnızca bu cihazda</span>' : ''}</div>
+      <p class="j-text">${escapeHtml(e.metin)}</p>
+      ${chips.length ? `<div class="j-chips">${chips.join('')}</div>` : ''}
+      <div class="j-entry-actions ui">
+        <button type="button" class="j-link" data-act="edit">Düzenle</button>
+        <button type="button" class="j-link danger" data-act="del">${armed ? 'Emin misin? Tekrar dokun' : 'Sil'}</button>
+      </div>
+    </article>`;
+  });
+  list.innerHTML = html;
+
+  list.querySelectorAll('.j-entry').forEach(card => {
+    const id = card.getAttribute('data-id');
+    card.querySelector('[data-act="edit"]').addEventListener('click', () => startJournalEdit(id));
+    card.querySelector('[data-act="del"]').addEventListener('click', () => deleteJournalEntry(id));
+    const chip = card.querySelector('.j-chip.eser');
+    if(chip) chip.addEventListener('click', () => openDetailModal(chip.getAttribute('data-eser')));
+  });
+}
+
+function refreshJournalUi(){
+  if(currentView === 'gunluk') renderJournal();
+}
+
+function resetJournalComposer(){
+  editingJournalId = null;
+  jEl('j-text').value = '';
+  jEl('j-tags').value = '';
+  jEl('j-eser').value = '';
+  jEl('j-date').value = todayStr();
+  jEl('j-save').textContent = 'Kaydet';
+  jEl('j-cancel').style.display = 'none';
+  jEl('j-error').style.display = 'none';
+}
+
+function startJournalEdit(id){
+  const e = journal.find(x => x.id === id);
+  if(!e) return;
+  editingJournalId = id;
+  renderJournalEserOptions();
+  jEl('j-date').value = e.tarih || todayStr();
+  jEl('j-eser').value = e.eserId || '';
+  jEl('j-text').value = e.metin || '';
+  jEl('j-tags').value = (e.etiketler || []).join(', ');
+  jEl('j-save').textContent = 'Güncelle';
+  jEl('j-cancel').style.display = '';
+  jEl('j-text').scrollIntoView({ behavior:'smooth', block:'center' });
+  jEl('j-text').focus();
+}
+
+async function afterJournalWrite(){
+  saveLocalJournal();
+  renderJournal();
+  if(getToken()){
+    const r = await queueJournalPush();
+    if(!r.ok) showToast('Bu cihazda kaydedildi, GitHub\'a gönderilemedi: ' + (r.reason || 'bilinmeyen hata'));
+  }
+}
+
+async function deleteJournalEntry(id){
+  if(journalDeleteArmed !== id){
+    journalDeleteArmed = id;
+    renderJournal();
+    setTimeout(() => { if(journalDeleteArmed === id){ journalDeleteArmed = null; refreshJournalUi(); } }, 4000);
+    return;
+  }
+  journalDeleteArmed = null;
+  const e = journal.find(x => x.id === id);
+  if(!e) return;
+  e.silindi = true;
+  e.metin = '';
+  e.updatedAt = Date.now();
+  if(editingJournalId === id) resetJournalComposer();
+  await afterJournalWrite();
+}
+
+jEl('j-save').addEventListener('click', async () => {
+  const text = jEl('j-text').value.trim();
+  const errEl = jEl('j-error');
+  if(!text){
+    errEl.textContent = 'Önce bir şeyler yaz.';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  const tarih = jEl('j-date').value || todayStr();
+  const eserId = jEl('j-eser').value || '';
+  const etiketler = parseTags(jEl('j-tags').value);
+  const now = Date.now();
+
+  if(editingJournalId){
+    const e = journal.find(x => x.id === editingJournalId);
+    if(e) Object.assign(e, { metin:text, tarih, eserId, etiketler, updatedAt:now });
+  } else {
+    journal.push({
+      id: 'j' + now.toString(36) + Math.random().toString(36).slice(2, 6),
+      tarih, metin:text, eserId, etiketler, createdAt:now, updatedAt:now, silindi:false
+    });
+  }
+  resetJournalComposer();
+  await afterJournalWrite();
+});
+jEl('j-cancel').addEventListener('click', resetJournalComposer);
+
+// --- Görünüm geçişi (Repertuar / Günlük) ---
+function setView(view){
+  currentView = view;
+  const isJ = view === 'gunluk';
+  document.querySelectorAll('#viewTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  document.querySelector('.layout').style.display = isJ ? 'none' : '';
+  jEl('journalView').style.display = isJ ? '' : 'none';
+  ['sortSelect', 'surpriseBtn', 'addBtn', 'syncBadge'].forEach(id => { jEl(id).style.display = isJ ? 'none' : ''; });
+  jEl('search').placeholder = isJ ? 'Günlükte ara…' : 'Eser, bestekâr veya makam ara...';
+  if(isJ) renderJournal(); else render();
+}
+document.querySelectorAll('#viewTabs .tab').forEach(t => {
+  t.addEventListener('click', () => setView(t.dataset.view));
+});
+
+// Eser künyesinden "bu eser için günlüğe yaz"
+function startJournalFor(eserId){
+  jEl('detailOverlay').style.display = 'none';
+  setView('gunluk');
+  resetJournalComposer();
+  renderJournalEserOptions();
+  jEl('j-eser').value = eserId;
+  jEl('j-text').scrollIntoView({ behavior:'smooth', block:'center' });
+  jEl('j-text').focus();
+}
+
+// Eser künyesinde gösterilen, o eserle ilgili son günlük kayıtları
+function journalSnippetHtml(eserId){
+  const list = journalSort(journal.filter(e => !e.silindi && e.eserId === eserId)).slice(0, 3);
+  if(list.length === 0) return '';
+  return `<div class="j-snippet">
+    <p class="ui" style="font-size:0.72rem; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; margin:0 0 0.4rem;">Günlüğümden</p>
+    ${list.map(e => `
+      <p class="ui" style="font-size:0.72rem; color:var(--gold-dim); margin:0.4rem 0 0.1rem;">${escapeHtml(formatJDate(e.tarih))}</p>
+      <p style="font-size:0.95rem; color:var(--ink); margin:0; white-space:pre-wrap;">${escapeHtml(e.metin.length > 160 ? e.metin.slice(0, 160) + '…' : e.metin)}</p>
+    `).join('')}
+  </div>`;
+}
+</script>
+
+<script>
+// --- Usûl görseli ---
+// Vuruş kalıpları (D = düm/kuvvetli, T = tek/hafif; sayı = kaç zaman sürdüğü).
+// Kaynaklar: neyzenim.com (Ney Dersleri 13), salihbora.com, varlikergen.com — çapraz kontrol edildi.
+// "tek" işaretli olanlar tek kaynakta bulunan kalıplardır; hocanın verdiği kalıp farklıysa "Özel kalıp" yazılabilir.
+const USULLER = [
+  {ad:'Nim Sofyan',  zaman:2,  v:[['D',1],['T',1]]},
+  {ad:'Semai',       zaman:3,  v:[['D',1],['T',1],['T',1]]},
+  {ad:'Sofyan',      zaman:4,  v:[['D',2],['T',1],['T',1]]},
+  {ad:'Türk Aksağı', zaman:5,  v:[['D',2],['T',2],['T',1]]},
+  {ad:'Yürük Semai', zaman:6,  v:[['D',1],['T',1],['T',1],['D',1],['T',2]]},
+  {ad:'Devr-i Hindi',zaman:7,  v:[['D',1],['T',1],['T',1],['D',2],['T',2]]},
+  {ad:'Düyek',       zaman:8,  v:[['D',1],['T',2],['T',1],['D',2],['T',2]]},
+  {ad:'Aksak',       zaman:9,  v:[['D',2],['T',1],['T',1],['D',2],['T',2],['T',1]]},
+  {ad:'Evfer',       zaman:9,  v:[['D',2],['T',1],['T',1],['D',2],['T',1],['T',2]]},
+  {ad:'Raks Aksağı', zaman:9,  v:[['D',2],['T',3],['D',2],['T',2]], tek:true},
+  {ad:'Aksak Semai', zaman:10, v:[['D',2],['T',1],['T',2],['D',2],['T',2],['T',1]]},
+  {ad:'Curcuna',     zaman:10, v:[['D',2],['T',1],['T',2],['D',2],['T',2],['T',1]], alias:true},
+  {ad:'Devr-i Revan',zaman:14, v:[['D',3],['D',2],['T',2],['D',3],['T',2],['T',2]], tek:true}
+];
+function usulNorm(s){
+  return String(s||'').toLocaleLowerCase('tr')
+    .replace(/[âä]/g,'a').replace(/[îı]/g,'i').replace(/û/g,'u').replace(/ü/g,'u')
+    .replace(/ö/g,'o').replace(/ş/g,'s').replace(/ç/g,'c').replace(/ğ/g,'g')
+    .replace(/[^a-z0-9]/g,'');
+}
+function findUsul(text){
+  const raw = String(text||'').trim();
+  if(!raw) return null;
+  // Özel kalıp: "D2 T1 T1" ya da "Düm2 Tek1 Tek1" biçimi
+  const toks = raw.split(/[\s,+]+/).filter(Boolean);
+  if(toks.length >= 2 && toks.every(t => /^(d|t|düm|dum|tek)\d{0,2}$/i.test(t))){
+    const v = toks.map(t => {
+      const m = t.match(/^(d|t|düm|dum|tek)(\d*)$/i);
+      return [/^d/i.test(m[1]) ? 'D' : 'T', Math.max(1, parseInt(m[2]||'1',10))];
+    });
+    return {ad:'Özel kalıp', zaman:v.reduce((a,x)=>a+x[1],0), v, ozel:true};
+  }
+  const n = usulNorm(raw);
+  const sorted = USULLER.slice().sort((a,b) => usulNorm(b.ad).length - usulNorm(a.ad).length);
+  return sorted.find(u => n.startsWith(usulNorm(u.ad))) || null;
+}
+function usulSvg(u, activeUnit){
+  const unitW = u.zaman > 12 ? 24 : 34, pad = 14, H = 92, base = 52;
+  const W = pad*2 + u.zaman*unitW;
+  let x = pad, unit = 0, out = '';
+  u.v.forEach((st, gi) => {
+    const [tip, dur] = st;
+    const w = dur*unitW;
+    const cx = x + unitW/2;
+    // grup çerçevesi (vuruşun süresi)
+    out += `<rect x="${x+1.5}" y="14" width="${w-3}" height="${H-28}" rx="6" fill="${tip==='D'?'rgba(201,162,75,.10)':'rgba(111,179,162,.08)'}" stroke="${tip==='D'?'#8f7439':'#3c7d6e'}" stroke-width=".6"/>`;
+    // vuruş işareti
+    if(tip==='D') out += `<circle class="us-hit" data-u="${unit}" cx="${cx}" cy="${base-4}" r="${unitW*0.36}" fill="#c9a24b"/>`;
+    else out += `<circle class="us-hit" data-u="${unit}" cx="${cx}" cy="${base-4}" r="${unitW*0.24}" fill="none" stroke="#6fb3a2" stroke-width="2"/>`;
+    // süre çizgisi
+    if(dur>1) out += `<line x1="${cx+unitW*0.4}" y1="${base-4}" x2="${x+w-unitW*0.35}" y2="${base-4}" stroke="${tip==='D'?'#8f7439':'#3c7d6e'}" stroke-width="2" stroke-linecap="round"/>`;
+    out += `<text x="${cx}" y="${H-8}" text-anchor="middle" font-size="10" fill="${tip==='D'?'#e0bd6c':'#6fb3a2'}" font-family="Inter,sans-serif">${tip==='D'?'Düm':'Tek'}</text>`;
+    // zaman numaraları
+    for(let k=0;k<dur;k++){
+      out += `<text x="${x+k*unitW+unitW/2}" y="10" text-anchor="middle" font-size="9" fill="#847a63" font-family="Inter,sans-serif">${unit+k+1}</text>`;
+    }
+    x += w; unit += dur;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${Math.min(W,320)}px;max-width:${W*1.6}px;height:auto;display:block;" role="img" aria-label="${escapeAttr(u.ad)} usûl vuruş şeması">${out}</svg>`;
+}
+function usulBlockHtml(item){
+  const u = findUsul(item.usul);
+  if(!item.usul) return '';
+  if(!u) return `<div class="usul-box"><p class="ui usul-title">Usûl: ${escapeHtml(item.usul)}</p><p class="ui" style="font-size:.78rem;color:var(--ink-faint);margin:.3rem 0 0;">Bu usûl için hazır şema yok. Düzenle'den "Düm2 Tek1 Tek1" gibi özel kalıp yazarsan şema çıkar.</p></div>`;
+  return `<div class="usul-box" data-usul="1">
+    <p class="ui usul-title">Usûl: ${escapeHtml(u.ad)} <span style="color:var(--ink-faint);">· ${u.zaman} zaman${u.tek?' · tek kaynak, hocanla doğrula':''}</span></p>
+    <div class="usul-scroll" id="usulSvgWrap">${usulSvg(u)}</div>
+    <div class="usul-ctl ui">
+      <button type="button" class="btn-ghost" id="usulPlayBtn">▶ Çal</button>
+      <label>Tempo <input type="range" id="usulBpm" min="30" max="200" value="${u.zaman>=9?110:90}"><span id="usulBpmVal"></span></label>
+    </div>
+  </div>`;
+}
+let usulTimer = null, usulCtx = null;
+function usulStop(){
+  if(usulTimer){ clearTimeout(usulTimer); usulTimer = null; }
+  document.querySelectorAll('.us-hit').forEach(el => el.style.opacity = '');
+  const b = document.getElementById('usulPlayBtn'); if(b) b.textContent = '▶ Çal';
+}
+function usulBeep(tip){
+  try{
+    usulCtx = usulCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(usulCtx.state === 'suspended') usulCtx.resume();
+    const o = usulCtx.createOscillator(), g = usulCtx.createGain(), t = usulCtx.currentTime;
+    o.frequency.value = tip === 'D' ? 110 : 330;
+    o.type = tip === 'D' ? 'sine' : 'triangle';
+    g.gain.setValueAtTime(tip === 'D' ? 0.9 : 0.35, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + (tip === 'D' ? 0.35 : 0.12));
+    o.connect(g); g.connect(usulCtx.destination); o.start(t); o.stop(t + 0.4);
+  }catch(e){}
+}
+function mountUsul(item){
+  usulStop();
+  const box = document.querySelector('.usul-box[data-usul]');
+  if(!box) return;
+  const u = findUsul(item.usul);
+  const bpm = document.getElementById('usulBpm'), val = document.getElementById('usulBpmVal');
+  const showBpm = () => { val.textContent = bpm.value + ' zaman/dk'; };
+  showBpm(); bpm.addEventListener('input', showBpm);
+  // zaman → vuruş eşlemesi
+  const steps = []; // her zaman birimi için {tip|null, vurus indeksi}
+  u.v.forEach(([tip,dur]) => { for(let k=0;k<dur;k++) steps.push(k===0 ? tip : null); });
+  document.getElementById('usulPlayBtn').addEventListener('click', () => {
+    if(usulTimer){ usulStop(); return; }
+    document.getElementById('usulPlayBtn').textContent = '■ Durdur';
+    let i = 0;
+    const tick = () => {
+      document.querySelectorAll('.us-hit').forEach(el => el.style.opacity = '.35');
+      const hit = document.querySelector('.us-hit[data-u="'+i+'"]');
+      if(steps[i]){ usulBeep(steps[i]); if(hit) hit.style.opacity = '1'; }
+      i = (i + 1) % steps.length;
+      usulTimer = setTimeout(tick, 60000 / Number(bpm.value));
+    };
+    tick();
+  });
+}
+</script>
+
+<script>
 loadData();
+initJournal();
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch((e) => console.error('SW kayıt hatası:', e));
