@@ -2376,31 +2376,44 @@ function renderUsulView(){
   const q = usulNorm(document.getElementById('search').value);
   const all = tumUsuller().filter(u => !q || usulNorm(u.ad).includes(q)).sort((a,b) => a.zaman - b.zaman || trSort(a.ad, b.ad));
   const wrap = document.getElementById('usulList2');
-  wrap.innerHTML = all.length ? all.map((u, i) => `<div class="usul-item" data-i="${i}">
-      ${usulPlayerHtml(u, '', 'l'+i, false)}
-      ${u.ozel ? `<div style="text-align:right;margin-top:.3rem;"><span class="ui" style="font-size:.72rem;color:var(--ink-faint);">Kalıp: ${escapeHtml(u.kalip||'')}</span> <button type="button" class="btn-ghost us-del" data-ad="${escapeAttr(u.ad)}" style="margin-left:.5rem;">Sil</button></div>`
-        : `<div style="text-align:right;margin-top:.3rem;"><button type="button" class="btn-ghost us-addvel" data-ad="${escapeAttr(u.ad)}">${u.vel ? 'Velveleliyi düzenle' : '+ Velveleli ekle'}</button>${u.velOverride ? ` <button type="button" class="btn-ghost us-del" data-ad="${escapeAttr(u.ad)}" style="margin-left:.4rem;">Velveleliyi sil</button>` : ''}</div>`}
+  const noVel = u => Object.assign({}, u, {vel:null});
+  const velAs = u => Object.assign({}, u, {v:u.vel, vel:null, tek:u.velOverride || u.ozel ? false : u.tek, not:''});
+  wrap.innerHTML = all.length ? all.map((u, i) => `<div class="usul-item" data-i="${i}" style="margin-bottom:1.1rem;">
+      <p style="font-size:1.25rem; font-weight:500; margin:0 0 .35rem; color:var(--ink);">${escapeHtml(u.ad)}</p>
+      ${usulPlayerHtml(noVel(u), 'Normal', 'l'+i+'n', false)}
+      ${u.vel ? usulPlayerHtml(velAs(u), 'Velveleli', 'l'+i+'v', false)
+        : `<div class="usul-box" style="border-style:dashed;"><p class="ui usul-title" style="margin:0;">Velveleli — henüz eklenmedi</p></div>`}
+      <div style="text-align:right;margin-top:.3rem;">
+        ${u.ozel ? `<span class="ui" style="font-size:.72rem;color:var(--ink-faint);">Kalıp: ${escapeHtml(u.kalip||'')}</span> ` : ''}
+        <button type="button" class="btn-ghost us-addvel" data-ad="${escapeAttr(u.ad)}">${u.vel ? 'Velveleliyi düzenle' : '+ Velveleli ekle'}</button>
+        ${u.vel && (u.velOverride || u.ozel) ? `<button type="button" class="btn-ghost us-delvel" data-ad="${escapeAttr(u.ad)}" style="margin-left:.3rem;">Velveleliyi sil</button>` : ''}
+        ${u.ozel ? `<button type="button" class="btn-ghost us-del" data-ad="${escapeAttr(u.ad)}" style="margin-left:.3rem;">Usûlü sil</button>` : ''}
+      </div>
     </div>`).join('') : '<div class="empty">Bu aramaya uyan usûl yok.</div>';
   usulStop();
-  mountUsulBoxes(wrap, b => all[Number(String(b.getAttribute('data-usul')).slice(1))]);
+  mountUsulBoxes(wrap, b => { const m = String(b.getAttribute('data-usul')).match(/^l(\d+)([nv])$/); if(!m) return null; const u = all[Number(m[1])]; return m[2] === 'v' ? velAs(u) : noVel(u); });
   wrap.querySelectorAll('.us-addvel').forEach(btn => btn.addEventListener('click', () => {
     const u = all.find(x => x.ad === btn.getAttribute('data-ad')); if(!u) return;
     document.getElementById('ub-ad').value = u.ad;
-    document.getElementById('ub-kalip').value = vToText(USULLER.find(x => x.ad === u.ad).v);
+    document.getElementById('ub-kalip').value = vToText(u.v);
     document.getElementById('ub-vel').value = u.vel ? vToText(u.vel) : '';
     ug.target = 1; ugFromText(document.getElementById('ub-vel').value); ugSyncControls(); ugRender(); usulBuilderPreview();
     document.getElementById('ub-status').textContent = u.ad + ' için velveleli kalıbı giriyorsun. Normal kalıp değişmez; ızgara velveleliyi düzenliyor.';
     const adEl = document.getElementById('ub-ad'); if(adEl.scrollIntoView) adEl.scrollIntoView({behavior:'smooth', block:'center'});
   }));
-  wrap.querySelectorAll('.us-del').forEach(btn => btn.addEventListener('click', async () => {
+  const remove = (selector, whole) => wrap.querySelectorAll(selector).forEach(btn => btn.addEventListener('click', async () => {
     const ad = btn.getAttribute('data-ad');
-    if(!confirm(ad + ' silinsin mi?')) return;
+    if(!confirm((whole ? ad + ' usûlü' : ad + ' velveleli kalıbı') + ' silinsin mi?')) return;
     const o = ozelUsuller.find(x => usulNorm(x.ad) === usulNorm(ad));
-    if(o){ o.silindi = true; o.updatedAt = Date.now(); }
+    if(o){
+      if(whole || o.velFor) o.silindi = true; else o.velKalip = '';
+      o.updatedAt = Date.now();
+    }
     const r = await pushOzel();
     showToast(r.ok ? 'Silindi' : 'Bu cihazda silindi' + (r.reason ? ' (GitHub: ' + r.reason + ')' : ''));
     renderUsulView(); renderMakamDatalist();
   }));
+  remove('.us-del', true); remove('.us-delvel', false);
 }
 function usulBuilderPreview(){
   const kalip = document.getElementById('ub-kalip').value, out = document.getElementById('ub-prev');
