@@ -309,7 +309,7 @@
         <p style="font-size:.74rem;color:var(--ink-faint);margin:0;">Yarım zaman için T.5, bir buçuk için T1.5 yazabilirsin.</p>
         <div class="ug-bar ui">
           <label>Zaman <input id="ug-n" type="number" min="1" max="32" value="8"></label>
-          <label>Hücre <select id="ug-step"><option value="1">1 zaman</option><option value="0.5">½ zaman</option></select></label>
+          <label>Hücre <select id="ug-step"><option value="1">1 zaman</option><option value="0.5">½ zaman</option><option value="0.25">¼ zaman</option></select></label>
           <span>Izgara şunu düzenler:
             <button type="button" class="btn-ghost" id="ug-t0" style="border-color:var(--gold);color:var(--gold-bright);">Normal</button>
             <button type="button" class="btn-ghost" id="ug-t1">Velveleli</button></span>
@@ -2088,6 +2088,137 @@ const USULLER = [
 // Yapı 6+4+6+4+4+4 (TDV: velvele ile bölünmüş ikinci mertebe).
 USULLER.push({ad:'Devr-i Kebir', zaman:28, tek:true, not:'Notasyon görselinden okundu, hocanla doğrula',
   v:[['D',2],['D',2],['T',2],['D',1],['T',1],['T',.5],['T',.5],['D',1],['T',2],['T',2],['T',2],['D',2],['D',2],['T',2],['T',2],['T',1],['T',1],['T',1],['T',1]]});
+// Velveleli (kudüm) kalıpları: M. Hurşit Ungay, "Türk Musîkîsinde Usûller ve Kudûm" (1981). Her usûlün sayfasındaki
+// "Velvelesi" notasından okundu; vuruş zamanları (birim = 1 zaman) kontrol edilip toplamı usûlün zamanına eşitlendi.
+// Hek = iki el birlikte, burada tek olarak çalınır. Düm/DÜ = sağ kudüm, Tek/TE/KE/KÂ/ME = sol kudüm.
+(function(){
+  const k = t => t.split(/\s+/).map(x => [x[0], parseFloat(x.slice(1))]);
+  const VEL = {
+    'Nim Sofyan':  ['D1 T.5 T.5', 11],
+    'Semai':       ['D1 T1 T.5 T.5', 15],
+    'Sofyan':      ['D1 T.5 T.5 T1 T1', 18],
+    'Türk Aksağı': ['D.5 T.5 D1 T2 T1', 20],
+    'Yürük Semai': ['D1 T1 T1 D.5 T.5 T1 T1', 25],
+    'Devr-i Hindi':['D1 T1 T.5 T.5 T1 T1 T1 T1', 34],
+    'Düyek':       ['D1 T.5 T.5 T1 T1 D.5 T.5 D1 T1 T.5 T.5', 40],
+    'Aksak':       ['D1 T.5 T.5 T1 T1 D.5 T.5 D1 T2 T1', 47],
+    'Evfer':       ['D1 T.5 T.5 T1 T1 D.5 T.5 D1 T1 T2', 53],
+    'Raks Aksağı': ['D1 D1 T1 T.5 T.5 T.5 T.5 T1 T1 T1 T1', 61],
+    'Aksak Semai': ['D1 T.5 T.5 T1 T1 T.5 T.5 D.5 T.5 D1 T2 T1', 67],
+    'Curcuna':     ['D1 T.5 T.5 T1 T1 T.5 T.5 D.5 T.5 D1 T2 T1', 67],
+    'Devr-i Revan':['D1 T1 T1 D1 T1 T1 T1 D.5 T.5 D1 T1 T1 T1 T1 T1', 101],
+    'Devr-i Kebir':['D1 T1 T.5 T.5 D1 T1 T.5 T.5 D1 T1 T.5 T.5 D1 T2 T2 T1 T.5 T.5 T1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 D.5 T.5 D.5 T.5 T1 T1 T1 T1', 185]
+  };
+  USULLER.forEach(u => {
+    const e = VEL[u.ad]; if(!e) return;
+    u.vel = k(e[0]);
+    const sum = u.vel.reduce((a,b) => a + b[1], 0);
+    if(Math.abs(sum - u.zaman) > 1e-9) console.warn('Velveleli toplam uyuşmuyor:', u.ad, sum, u.zaman);
+    u.not = (u.not ? u.not + '. ' : '') + 'Velveleli: Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.' + e[1];
+    if(u.ad === 'Raks Aksağı' || u.ad === 'Devr-i Revan'){ delete u.tek; u.not = 'Normal kalıp Ungay (1981) ile doğrulandı. ' + u.not.replace(/^Velveleli/, 'Velveleli'); }
+    if(u.ad === 'Devr-i Kebir'){ delete u.tek; u.not = 'Normal kalıp (1. şekil) Ungay (1981), s.181 ile doğrulandı. Velveleli: Ungay (1981), s.185'; }
+  });
+})();
+// --- Ungay kitabındaki diğer usûller (otomatik üretildi; toplamlar zamana eşitlenerek doğrulandı) ---
+(function(){
+  const k = t => t.split(/\s+/).map(x => [x[0], parseFloat(x.slice(1))]);
+  const NEW = [
+    ["Zafer", 5, "D1 T2 D1 T1", "D1 T1 T1 D1 T1", [{"o": "5/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.23"],
+    ["Darb", 6, "D2 T2 T2", "D2 D1 T.5 T.5 T1 T1", [{"o": "6/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.29"],
+    ["Sengin Semai", 6, "D1 T1 T1 D1 T2", "D1 T1 T1 D.5 T.5 T1 T1", [{"o": "6/4", "ad": "Sengin Semai"}, {"o": "6/2", "ad": "Ağır Sengin Semai"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.30"],
+    ["Devr-i Turan", 7, "D2 T2 T3", "D1 T1 D1 T1 D1 T1 T1", [{"o": "7/16"}, {"o": "7/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.37"],
+    ["Müsemmen", 8, "D3 T2 T3", "D1 D1 T.5 T.5 T1 T1 D.5 T.5 T1 T1", [{"o": "8/8"}, {"o": "8/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.44"],
+    ["Aydın", 9, "D2 T2 D2 T3", "D1 T.5 T.5 T1 T1 D.5 T.5 D1 T2 T1", [{"o": "9/8"}, {"o": "9/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.58"],
+    ["Oynak", 9, "D1 T1 T1 D2 T2 T2", "D1 T1 T1 D.5 T.5 D.5 T.5 T1 T1 T1 T1", [{"o": "9/8"}, {"o": "9/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.63"],
+    ["Aksak Semai Evferi", 10, "D2 T1 T2 D2 T1 T2", "D1 T.5 T.5 T1 T1 T.5 T.5 D.5 T.5 D1 T1 T2", [{"o": "10/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.72"],
+    ["Lenk Fahte", 10, "D2 T3 D1 T2 T1 T1", "D1 D1 T.5 T.5 T1 T1 D.5 T.5 T1 T1 T1 T1", [{"o": "10/8"}, {"o": "10/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.76"],
+    ["Çeng-i Harbi", 10, "D1 T1 D1 T1 D1 T1 T1 D1 T1 T1", null, [{"o": "10/8"}, {"o": "10/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.79. Ayrı velveleli notası yok."],
+    ["Tek Vuruş", 11, "D2 T2 T1 D2 T2 T2", "D1 T.5 T.5 T1 T1 T.5 T.5 D2 D1 T.5 T.5 T1 T1", [{"o": "11/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.83"],
+    ["Frenkçin", 12, "D1 D2 D1 D2 T1 T1 T1 T1 T1 T1", null, [{"o": "12/8"}, {"o": "12/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.85. Velveleli kitapta karmaşık yazılmış, eklenmedi."],
+    ["İkiz Aksağı", 12, "D1 T1 T1 D2 T2 D2 T2 T1", "D1 T1 T.5 T.5 T1 T1 T1 T1 D.5 T.5 D1 T2 T1", [{"o": "12/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.89"],
+    ["Nim Çember", 12, "D2 T1 T1 D2 T2 T2 T1 T1", "D2 T1 T1 D1 T1 D.5 T.5 D1 T2 T1 T1", [{"o": "12/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.90"],
+    ["Nim Evsat", 13, "T1 T1 T1 T2 D4 D4", "D1 D1 T.5 T.5 T1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1", [{"o": "13/8"}, {"o": "13/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.93. Velveleli notadan okundu."],
+    ["Şarkı Devr-i Revani", 13, "D1 T1 T1 D2 T2 D2 T2 T1 T1", "D1 T1 T.5 T.5 D1 T.5 T.5 T1 T1 D1 T.5 T.5 T1 T1 T1 T1", [{"o": "13/8"}, {"o": "13/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.97"],
+    ["Bektaşi Devr-i Revani", 13, "D2 T1 T1 D2 T2 T1 D2 T1 T1", "D1 T.5 T.5 T1 T1 D.5 T.5 D1 T.5 T.5 T1 T1 D1 T.5 T.5 T1 T1", [{"o": "13/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.100"],
+    ["Raksan", 15, "D1 T1 T1 D2 T1 T2 D2 T2 T1 T2", "D1 T1 T.5 T.5 D1 T.5 T.5 T1 T1 T.5 T.5 D.5 T.5 D1 T2 T.5 T.5 T1 T1", [{"o": "15/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.103"],
+    ["Bektaşi Raksanı", 15, "D2 T1 T2 D2 T1 T2 D2 T2 T1", null, [{"o": "15/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.105. Velveleli eklenmedi."],
+    ["Çifte Düyek", 16, "D2 T4 T2 D1 D1 T4 T1 T1", "D1 D1 T.5 T.5 T.5 T.5 T1 T1 T1 T1 D.5 D.5 T.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1", [{"o": "16/8"}, {"o": "16/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.109-110. Velveleli hangi şekle ait olduğu kitapta belirsiz; 1. şekle bağlandı."],
+    ["Çifte Düyek 2. şekil", 16, "D2 T4 T2 D2 D2 T2 T1 T1", null, [{"o": "16/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.109. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Nim Hafif", 16, "D1 T1 T2 D1 T1 T2 D1 T1 D1 D1 T1 T1 T.5 T.5 T.5 T.5", "D1 T.5 T.5 T1 T1 D1 T.5 T.5 T1 T1 D.5 D.5 T.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1", [{"o": "16/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.113"],
+    ["Nim Hafif 2. şekil", 16, "D1 T1 T2 D1 T1 T2 D1 T1 D1 D1 T2 T1 T1", null, [{"o": "16/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.113. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Fer", 16, "D2 T1 T1 D2 T2 D1 T1 D1 D1 T2 T1 T1", "D1 D1 T1 T.5 T.5 T1 T1 T1 T1 D.5 D.5 T.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1", [{"o": "16/8"}, {"o": "16/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.117-118"],
+    ["Fer 2. şekil", 16, "D2 T1 T1 D2 T2 D1 T1 T.5 T.5 D1 T1 T1 T.5 T.5 T.5 T.5", null, [{"o": "16/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.117. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Nim Berefşan", 16, "D2 T1 D2 T1 D2 D1 T1 D1 D1 T1 T1 T.5 T.5 T.5 T.5", "D1 T1 T.5 T.5 D1 D1 T.5 T.5 T1 T1 D.5 D.5 T.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1", [{"o": "16/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.121-122"],
+    ["Nim Berefşan 2. şekil", 16, "D2 T1 D2 T1 D2 D1 T1 D1 D1 T2 T1 T1", null, [{"o": "16/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.121. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Turan Semai", 17, "D1 T1 T1 D2 T2 D2 T1 T2 D2 T2 T1", null, [{"o": "17/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.125"],
+    ["Darb-ı Türki", 18, "D2 D2 T2 D4 T4 T1 T1 T1 T1", "D1 T1 T.5 T.5 D1 T1 T.5 T.5 D1 T2 T2 T1 T.5 T.5 T.5 T.5 T1 T1 T1 T1", [{"o": "18/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.131-132. Velveleli notadan okundu."],
+    ["Darb-ı Türki 2. şekil", 18, "D2 D2 T2 D1 T1 T.5 T.5 D1 T2 T2 T1 T1 T1 T1", null, [{"o": "18/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.131. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Fahte", 20, "D2 D1 D1 T2 T2 T2 D2 T2 T2 T1 T1 T1 T1", "D1 D1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1 T1 T1", [{"o": "20/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.139-140. Velveleli toplam 20 zamana göre tamamlandı (notadaki bir bayrak okunamadı)."],
+    ["Durak Evferi", 21, "T1 T1 T1 T2 D4 D4 T4 T4", null, [{"o": "21/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.145-146. Kitaba göre velvelesi yoktur."],
+    ["Durak Evferi 2. şekil", 21, "D1 T1 T1 T2 D4 D4 T4 T4", null, [{"o": "21/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.146. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Hezeç", 22, "D2 D2 D2 D1 D1 T2 D2 T2 D2 T2 T1 T1 T1 T1", "D1 D1 T.5 T.5 T.5 T.5 T1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T.5 T.5 T1 T1 T.5 T.5 T1 T1 T1 T1 T1 T1", [{"o": "22/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.151-152"],
+    ["Çember", 24, "D2 T1 T1 D2 D1 D1 T2 T2 T2 D2 T2 T2 T1 T1 T1 T1", "D1 T.5 T.5 T1 T1 D1 D1 T.5 T.5 T.5 T.5 T1 T1 D1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1 T1 T1 T1 T1", [{"o": "24/4"}, {"o": "24/2", "ad": "Ağır Çember"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.157-158"],
+    ["Evsat", 26, "T1 T1 T1 T2 D2 T2 D2 D2 T2 T1 T2 D4 D4", "D1 D1 T.5 T.5 T1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1 D1 T1 D.5 T.5 D1 T1 T1 T1 T1 T1 T1 T1 T1 T1", [{"o": "26/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.168-169"],
+    ["Beste Devr-i Revani", 26, "D5 D4 T4 D5 T4 T4", "D1 D1 T.5 T.5 T1 T1 D1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T2 T2 T1 T.5 T.5 T.5 T.5 T1 T1 T1 T1 T1 T1", [{"o": "26/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.172-173"],
+    ["Nim Sakıl", 24, "D2 T1 T1 D2 T1 T1 T1 T1 D2 T1 T1 T1 T1 D2 T1 T1 T1 T1 T1 T1", "D1 D1 T.5 T.5 T.5 T.5 T1 T1 T1 T1 T2 T2 T1 T.5 T.5 T1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1", [{"o": "24/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.161-162. Velveleli: HEK süreleri toplama göre belirlendi."],
+    ["Nim Sakıl 2. şekil", 24, "D2 T1 T1 D2 T1 T1 T1 T1 D2 T1 T1 D1 T1 T.5 T.5 D1 T1 T1 T1 T1 T1 T1", null, [{"o": "24/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.161. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Remel 1. şekil", 28, "D2 T1 T1 D2 T1 T1 T1 T1 D2 T1 T1 D.5 T.5 T.25 T.25 D.5 T2 T2 D1 T1 D1 D1 T1 T1 T.5 T.5 T.5 T.5", "D1 D1 T.5 T.5 T.5 T.5 T1 T1 T1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1 T2 T2 T1 T.5 T.5 T1 T1 T1 T1 T1 T1", [{"o": "28/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.189-191. Remel'in 1. şekli; 0.25'lik vuruşlar içerir."],
+    ["Remel 2. şekil", 28, "D2 T1 T1 D2 T1 T1 T1 T1 D2 T1 T1 D2 D2 T2 D1 T1 D1 D1 T2 T1 T1", null, [{"o": "28/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.189. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Remel 3. şekil", 28, "D4 T2 T2 D4 T2 T2 T2 T2 D4 T2 T2", null, [{"o": "28/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.188. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Remel 4. şekil", 28, "D1 T1 T.5 T.5 D1 T4 D4 D2 T2 D2 D2 T2 T2 T1 T1 T1 T1", null, [{"o": "28/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.188. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Frengifer", 28, "D2 D4 D2 D4 D2 T2 D2 D2 T2 T2 T1 T1 T1 T1", "D2 D1 T.5 T.5 T1 T1 D2 D1 T.5 T.5 T1 T1 D1 T1 D.5 T.5 D.5 T.5 T1 T1 T1 T1 D1 T1 D.5 T.5 D.5 T.5 T1 T1 T1 T1", [{"o": "28/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.194-196"],
+    ["Muhammes", 32, "D2 T1 T1 D2 T2 D2 D2 T2 T1 T1 D2 T2 T1 T1 D2 T2 T2 T1 T1 T1 T1", "D1 D1 T1 T.5 T.5 T1 T1 T1 T1 D1 T1 D.5 T.5 D.5 T.5 T1 T1 T1 T1 T2 T2 T1 T.5 T.5 T1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1", [{"o": "32/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.203-205"],
+    ["Berefşan", 32, "D4 T2 D4 T2 D4 D2 T2 D2 D2 T2 T2 T1 T1 T1 T1", "D2 D2 T2 T.5 T.5 T.5 T.5 T1 T1 T1 T1 D1 T1 D.5 T.5 D.5 T.5 T.5 T.5 T.5 T.5 T1 T1 T1 T1 T2 T1 T.5 T.5 T1 T1 T1 T1 T1 T1", [{"o": "32/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.208-210"],
+    ["Sakıl", 48, "D2 T1 T1 D2 T1 T1 T1 T1 D2 T1 T1 D1 T.5 T.5 T2 T2 D2 D2 T2 D2 T2 T2 D2 T1 T1 D1 D1 T1 T.5 T.5 D1 T1 T.5 T.5 D1 T1 T1 T.5 T.5 T.5 T.5", "D2 T1 T1 D1 D1 T1 T1 T1 T1 D1 T.5 T.5 T1 T1 D1 T.5 T.5 T1 T1 T1 T1 T2 T2 T1 T.5 T.5 T1 T1 T2 T2 T1 T.5 T.5 T1 T1 D1 D1 T1 T.5 T.5 D1 T1 T.5 T.5 D1 T1 T1 T.5 T.5 T.5 T.5", [{"o": "48/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.214-216"],
+    ["Havi", 64, "D2 T1 T1 D.5 T.5 T.25 T.25 D.5 T2 D2 T1 T1 T1 T1 D2 T1 T1 T1 T1 D.5 T.5 T.25 T.25 D.5 T2 D2 D2 T1 T1 T1 T1 D2 T1 T1 D1 D1 T1 T.5 T.5 D1 T1 T.5 T.5 D1 T1 T1 T.5 T.5 T.5 T.5 D1 T1 T2 D1 T1 T2 D1 T1 D1 D1 T1 T1 T.5 T.5 T.5 T.5", null, [{"o": "64/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.220-224. Kitaba göre velvelesi yoktur."],
+    ["Havi 2. şekil", 64, "D2 T1 T1 D2 T2 D2 T1 T1 T1 T1 D2 T1 T1 T1 T1 D2 T2 D2 D2 T1 T1 T1 T1 D2 T1 T1 D1 D1 T2 T1 T1 D2 T2 T1 T1 D1 T1 T2 D1 T1 T2 D1 T1 D1 D1 T2 T1 T1", null, [{"o": "64/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.221. Alternatif şekil (kitapta ayrı kalıp olarak verilir)."],
+    ["Darb-ı Fetih", 88, "D2 T1 T1 D2 T1 T1 T1 T1 D2 T1 T1 D2 T2 D2 T2 D2 T1 T1 D1 T.5 T.5 T2 T2 D2 T1 T1 T1 T1 D2 T1 T1 D1 T.5 T.5 T2 D2 D2 D2 T1 T1 T1 T1 D2 T1 T1 D1 D1 T1 T.5 T.5 D1 T1 T.5 T.5 D1 T1 T1 T.5 T.5 T.5 T.5 D1 T1 T2 D1 T1 T2 D1 T1 D1 D1 T1 T1 T.5 T.5 T.5 T.5", null, [{"o": "88/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.228. Kitaba göre velvelesi yoktur."],
+    ["Darb-ı Bulgar", 8, "D1 T1 D1 T2 D1 T1 T1", null, [{"o": "8/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.267"],
+    ["Üçleme", 9, "D3 T3 T3", null, [{"o": "9/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.267"],
+    ["Mazmûri", 12, "T1 T1 T1 T2 D2 D2 T3", null, [{"o": "12/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.268"],
+    ["Musabba", 14, "D1 D1 D1 D1 D3 D2 T1 D2 T.5 T.5 T.5 T.5", null, [{"o": "14/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.268"],
+    ["Devr-i Türki", 14, "D1 T1 T.5 T.5 D1 T2 D4 D4", null, [{"o": "14/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.269"],
+    ["Bektaşi Raksanı 16 zaman", 16, "D3 D2 T2 D2 T2 D3 T2", null, [{"o": "16/8"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.269"],
+    ["Şirin", 22, "D2 T.5 T.5 T.5 T.5 D1 T1 T2 T1 T1 T1 T1 D1 T.5 T.5 D1 D1 T2 T1 T1 T1 T1", null, [{"o": "22/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.270"],
+    ["Devr-i Sagir", 30, "D1 T1 T.5 T.5 D1 T1 T.5 T.5 D1 T1 T.5 T.5 D1 T2 T2 T1 T.5 T.5 T.5 T.5 D1 D1 T.5 T.5 T.5 T.5 D1 D1 T1 T.5 T.5 T.5 T.5 T1 T1 T1 T1", null, [{"o": "30/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.271"],
+    ["Darb-ı Hüner", 38, "D2 T2 D2 T2 D2 T1 T1 D2 T2 D2 D2 T2 D6 T2 D4 T1 T1 T1 T1", null, [{"o": "38/4"}], "Ungay, Türk Musîkîsinde Usûller ve Kudûm (1981), s.272-273"],
+  ];
+  NEW.forEach(([ad, zaman, n, vel, mert, not]) => {
+    const u = {ad, zaman, v:k(n), not};
+    if(vel) u.vel = k(vel);
+    if(mert && mert.length) u.mert = mert;
+    const s1 = u.v.reduce((a,b) => a + b[1], 0), s2 = u.vel ? u.vel.reduce((a,b) => a + b[1], 0) : zaman;
+    if(Math.abs(s1 - zaman) > 1e-9 || Math.abs(s2 - zaman) > 1e-9) console.warn('Toplam uyuşmuyor:', ad, s1, s2, zaman);
+    USULLER.push(u);
+  });
+  // Mertebe (ölçü) bilgisi: zaman/vuruşlar aynı kalır; yalnız birim notası değişir (Ungay s.7).
+  const M = (o, ad) => ad ? {o, ad} : {o};
+  const MERT = {
+    'Semai':[M('3/8'),M('3/4'),M('3/2')], 'Sofyan':[M('4/8'),M('4/4')], 'Türk Aksağı':[M('5/8')],
+    'Yürük Semai':[M('6/8'),M('6/4','Sengin Semai'),M('6/2','Ağır Sengin Semai')],
+    'Devr-i Hindi':[M('7/8'),M('7/4','Sengin Devr-i Hindi')],
+    'Düyek':[M('8/8','Yürük Düyek'),M('8/4','Ağır Düyek'),M('8/2','Ağır Düyek')],
+    'Aksak':[M('9/8','Yürük Aksak'),M('9/4','Ağır Aksak')], 'Evfer':[M('9/8'),M('9/4','Ağır Evfer')],
+    'Raks Aksağı':[M('9/8')],
+    'Aksak Semai':[M('10/8','Curcuna'),M('10/4','Aksak Semai'),M('10/2','Ağır Aksak Semai')],
+    'Curcuna':[M('10/8','Curcuna'),M('10/4','Aksak Semai'),M('10/2','Ağır Aksak Semai')],
+    'Devr-i Revan':[M('14/8'),M('14/4')], 'Devr-i Kebir':[M('28/4')]
+  };
+  USULLER.forEach(u => { if(MERT[u.ad] && !u.mert) u.mert = MERT[u.ad]; });
+  // Bileşik usûller (zincir): parçaların normal ve velveleli kalıpları art arda eklenir.
+  const ZIN = [
+    ['Zincir', ['Çifte Düyek','Fahte','Çember','Devr-i Kebir','Berefşan'], 'Çifte Düyek + Fahte + Çember + Devr-i Kebir + Berefşan (120 zaman)'],
+    ['Eksik Zincir', ['Çifte Düyek','Fahte','Çember','Devr-i Kebir'], 'Murabba Zincir: Çifte Düyek + Fahte + Çember + Devr-i Kebir (88 zaman)'],
+    ['Nim Zincir', ['Düyek','Lenk Fahte','Nim Çember','Devr-i Revan','Nim Berefşan'], 'Düyek + Lenk Fahte + Nim Çember + Devr-i Revan + Nim Berefşan (60 zaman)']
+  ];
+  ZIN.forEach(([ad, parts, aciklama]) => {
+    const ps = parts.map(p => USULLER.find(u => u.ad === p));
+    if(ps.some(p => !p)) return;
+    const u = {ad, zaman:ps.reduce((a,p) => a + p.zaman, 0), v:[].concat(...ps.map(p => p.v)), not:'Bileşik usûl: ' + aciklama + '. Parçalar kitaptaki kalıplardan birleştirildi; hocanla doğrula.', tek:true};
+    if(ps.every(p => p.vel)) u.vel = [].concat(...ps.map(p => p.vel));
+    USULLER.push(u);
+  });
+})();
 // --- Makam tanıtımları ---
 // Varsayılan içerik: TDV İslâm Ansiklopedisi (İsmail Hakkı Özkan, Cinuçen Tanrıkorur), Wikipedia ve akademik makale özetlerinden derlendi.
 // Kaynakta bulunmayan alan boş bırakıldı ve "Henüz doğrulanmadı" olarak görünür. Her alan uygulamadan düzenlenebilir;
@@ -2604,7 +2735,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 let ozelUsuller = [];            // {ad, kalip, silindi?, updatedAt}
 const OZEL_KEY = 'ozel_usuller', OZEL_FILE = 'usuller.json';
-function vToText(v){ return v.map(([t, d]) => t + (Math.round(d * 10) / 10)).join(' '); }
+function vToText(v){ return v.map(([t, d]) => t + (Math.round(d * 100) / 100)).join(' '); }
 function tumUsuller(){
   const ov = ozelUsuller.filter(o => !o.silindi && o.velFor && o.velKalip);
   const base = USULLER.map(u => {
@@ -2630,7 +2761,7 @@ function usulByName(text){
   return tumUsuller().sort((a,b) => usulNorm(b.ad).length - usulNorm(a.ad).length)
     .find(u => n.startsWith(usulNorm(u.ad))) || null;
 }
-const STROKE_RE = /^(d|t|düm|dum|tek)(\d{0,2}(?:\.\d)?|\.\d)$/i;
+const STROKE_RE = /^(d|t|düm|dum|tek)(\d{0,2}(?:\.\d{1,2})?|\.\d{1,2})$/i;
 function parseKalip(text, depth){
   const parts = String(text||'').split('+').map(s => s.trim()).filter(Boolean);
   if(!parts.length || depth > 2) return null;
@@ -2638,7 +2769,7 @@ function parseKalip(text, depth){
   for(const part of parts){
     const toks = part.split(/[\s,]+/).filter(Boolean);
     if(toks.length && toks.every(t => STROKE_RE.test(t))){
-      toks.forEach(t => { const m = t.match(STROKE_RE); v.push([/^d/i.test(m[1]) ? 'D' : 'T', Math.max(0.5, parseFloat(m[2]||'1')||1)]); });
+      toks.forEach(t => { const m = t.match(STROKE_RE); v.push([/^d/i.test(m[1]) ? 'D' : 'T', Math.max(0.25, parseFloat(m[2]||'1')||1)]); });
     } else {
       const b = USULLER.find(u => usulNorm(u.ad) === usulNorm(part)) ||
         ozelUsuller.filter(o => !o.silindi && !o.velFor && usulNorm(o.ad) === usulNorm(part)).map(o => parseKalip(o.kalip, depth+1))[0];
@@ -2689,6 +2820,13 @@ function usulSvg(u, vv){
   });
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${Math.round(Math.min(W, total>12?W*0.7:320))}px;max-width:${Math.round(W*1.6)}px;height:auto;display:block;" role="img" aria-label="${escapeAttr(u.ad)} usûl vuruş şeması">${out}</svg>`;
 }
+function mertK(o){ const d = Number(String(o).split('/')[1]) || 8; return 8 / d; }   // 8→1, 4→2, 2→4 (birim notası büyüklüğü)
+function usulBaseBpm(u){ return u.zaman >= 9 ? 110 : 90; }
+function mertHtml(u){
+  if(!u.mert || !u.mert.length) return '';
+  const ch = u.mert.map((m, i) => `<button type="button" class="btn-ghost us-mert-b" data-i="${i}" style="${i===0?'border-color:var(--gold);color:var(--gold-bright);':''}">${escapeHtml(m.o)}${m.ad ? ' · ' + escapeHtml(m.ad) : ''}</button>`).join(' ');
+  return `<div class="ui us-mert" style="margin:0 0 .5rem;font-size:.74rem;color:var(--ink-faint);">Ölçü / mertebe: ${ch}${u.mert.length > 1 ? ' <span>(zaman düzeni aynı, birim nota ve hız değişir)</span>' : ''}</div>`;
+}
 function usulPlayerHtml(u, etiket, key, startVel, alwaysTabs){
   const baslik = (etiket ? escapeHtml(etiket) + ' — ' : '') + escapeHtml(u.ad);
   const not = u.tek ? ' · hocanla doğrula' : '';
@@ -2701,10 +2839,11 @@ function usulPlayerHtml(u, etiket, key, startVel, alwaysTabs){
       <p class="ui usul-title" style="margin:0;">${baslik} <span class="us-zaman" style="color:var(--ink-faint);">· ${zam} zaman${not}</span></p>
       ${tabs}
     </div>
+    ${mertHtml(u)}
     <div class="usul-scroll us-svgwrap">${usulSvg(u, cur)}</div>
     <div class="usul-ctl ui">
       <button type="button" class="btn-ghost us-play">▶ Çal</button>
-      <label>Tempo <input type="range" class="us-bpm" min="30" max="240" value="${u.zaman>=9?110:90}"><span class="us-bpmval"></span></label>
+      <label>Tempo <input type="range" class="us-bpm" min="15" max="240" value="${usulBaseBpm(u)}"><span class="us-bpmval"></span></label>
     </div>
     ${u.not ? `<p class="ui" style="font-size:.72rem;color:var(--ink-faint);margin:.4rem 0 0;">${escapeHtml(u.not)}</p>` : ''}
   </div>`;
@@ -2870,6 +3009,12 @@ function mountUsulBoxes(root, resolve){
         b1.style.cssText = isVel ? 'border-color:var(--gold);color:var(--gold-bright);' : '';
       }
     };
+    box.querySelectorAll('.us-mert-b').forEach(b => b.addEventListener('click', () => {
+      const i = Number(b.dataset.i), m = u.mert[i], first = mertK(u.mert[0].o);
+      box.querySelectorAll('.us-mert-b').forEach(x => x.style.cssText = x === b ? 'border-color:var(--gold);color:var(--gold-bright);' : '');
+      bpm.value = Math.max(Number(bpm.min), Math.round(usulBaseBpm(u) * first / mertK(m.o)));
+      box.setAttribute('data-mert', m.o); show();
+    }));
     const b0 = box.querySelector('.us-v0'), b1 = box.querySelector('.us-v1');
     if(b0) b0.addEventListener('click', () => setVar(false));
     if(b1) b1.addEventListener('click', () => setVar(true));
@@ -2938,11 +3083,13 @@ function renderUsulView(){
   const q = usulNorm(document.getElementById('search').value);
   const all = tumUsuller().filter(u => !q || usulNorm(u.ad).includes(q)).sort((a,b) => a.zaman - b.zaman || trSort(a.ad, b.ad));
   const wrap = document.getElementById('usulList2');
-  wrap.innerHTML = all.length ? all.map((u, i) => `<div class="usul-item" data-i="${i}" style="margin-bottom:1.1rem;">
+  let lastGrp = null;
+  const grp = z => z <= 15 ? 'Küçük usûller (15 zamana kadar)' : 'Büyük usûller (16 zaman ve üstü)';
+  wrap.innerHTML = all.length ? all.map((u, i) => (!q && grp(u.zaman) !== lastGrp ? `<h3 class="ui" style="margin:1.4rem 0 .6rem;font-size:.95rem;color:var(--gold-bright);">${lastGrp = grp(u.zaman)}</h3>` : '') + `<div class="usul-item" data-i="${i}" style="margin-bottom:1.1rem;">
       ${usulPlayerHtml(u, '', 'l'+i, false, true)}
       <div style="text-align:right;margin-top:.3rem;">
         ${u.ozel ? `<span class="ui" style="font-size:.72rem;color:var(--ink-faint);">Kalıp: ${escapeHtml(u.kalip||'')}</span> ` : ''}
-        <button type="button" class="btn-ghost us-addvel" data-ad="${escapeAttr(u.ad)}">${u.vel ? 'Velveleliyi düzenle' : '+ Velveleli ekle'}</button>
+        ${u.vel ? `<button type="button" class="btn-ghost us-addvel" data-ad="${escapeAttr(u.ad)}">Velveleliyi düzenle</button>` : ''}
         ${u.vel && (u.velOverride || u.ozel) ? `<button type="button" class="btn-ghost us-delvel" data-ad="${escapeAttr(u.ad)}" style="margin-left:.3rem;">Velveleliyi sil</button>` : ''}
         ${u.ozel ? `<button type="button" class="btn-ghost us-del" data-ad="${escapeAttr(u.ad)}" style="margin-left:.3rem;">Usûlü sil</button>` : ''}
       </div>
@@ -2984,7 +3131,7 @@ function usulBuilderPreview(){
 // --- Izgara (step sequencer) editörü ---
 const ug = {n:8, step:1, cells:[], target:0};   // target 0 = normal alanı, 1 = velveleli alanı
 function ugField(){ return document.getElementById(ug.target ? 'ub-vel' : 'ub-kalip'); }
-function ugNum(x){ return String(Math.round(x * 10) / 10); }
+function ugNum(x){ return String(Math.round(x * 100) / 100); }
 function ugToKalip(){
   if(!ug.cells.length || !ug.cells[0]) return '';
   const toks = [];
@@ -3002,6 +3149,7 @@ function ugFromText(text){
   const u = parseKalip(t, 0); if(!u) return false;
   let step = ug.step;
   if(u.v.some(x => Math.abs(x[1] % 1) > 1e-9)) step = 0.5;
+  if(u.v.some(x => Math.abs((x[1] / 0.5) % 1) > 1e-9)) step = 0.25;
   if(u.v.some(x => Math.abs((x[1] / step) % 1) > 1e-9)) return false;
   ug.step = step; ug.n = Math.max(1, Math.round(u.zaman / step));
   ug.cells = new Array(ug.n).fill(null);
