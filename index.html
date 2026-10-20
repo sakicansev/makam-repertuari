@@ -230,6 +230,19 @@
   .usul-ctl{display:flex; gap:.8rem; align-items:center; margin-top:.6rem; font-size:.78rem; color:var(--ink-dim); flex-wrap:wrap;}
   .usul-ctl input[type=range]{vertical-align:middle; accent-color:var(--gold); width:110px;}
   .usul-chip{display:inline-block; font-size:.68rem; color:var(--teal); border:0.5px solid var(--teal-border); border-radius:10px; padding:.05rem .45rem; margin-left:.35rem;}
+  .ug-bar{display:flex; gap:.7rem; align-items:center; flex-wrap:wrap; font-size:.78rem; color:var(--ink-dim);}
+  .ug-bar input[type=number],.ug-bar select{background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:.3rem .4rem; font-size:.8rem;}
+  .ug-bar input[type=number]{width:56px;}
+  .ugrid{overflow-x:auto; padding:.3rem 0 .5rem;}
+  .ugrid .ug-row{display:flex; align-items:center; gap:2px; margin-bottom:2px; width:max-content;}
+  .ugrid .ug-lab{width:44px; flex:none; font-size:.72rem; color:var(--ink-dim); position:sticky; left:0; background:var(--panel-2); z-index:1;}
+  .ugrid .ug-num{width:26px; flex:none; font-size:.62rem; color:var(--ink-faint); text-align:center;}
+  .gcell{width:26px; height:30px; flex:none; border:0.5px solid var(--border-strong); background:var(--panel-3); border-radius:4px; padding:0; cursor:pointer;}
+  .gcell.beat{margin-left:3px;}
+  .gcell.on-D{background:var(--gold); border-color:var(--gold-bright);}
+  .gcell.on-T{background:var(--teal); border-color:var(--teal-border);}
+  .gcell.playing{outline:2px solid var(--ink); outline-offset:1px;}
+  .ug-hold{background:var(--panel-2);}
 </style>
 </head>
 <body>
@@ -286,8 +299,29 @@
         <p style="font-size:.74rem;color:var(--ink-faint);margin:0;">Düm = D, Tek = T, sayı kaç zaman sürdüğünü gösterir (D2 = 2 zaman düm). Hazır usûl adlarını + ile birleştirebilirsin.</p>
         <input id="ub-vel" type="text" placeholder="İstersen velveleli kalıp (boş bırakabilirsin): D2 D2 T2 D1 T1 T.5 T.5 ..." style="background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:.55rem .7rem;">
         <p style="font-size:.74rem;color:var(--ink-faint);margin:0;">Yarım zaman için T.5, bir buçuk için T1.5 yazabilirsin.</p>
+        <div class="ug-bar ui">
+          <label>Zaman <input id="ug-n" type="number" min="1" max="32" value="8"></label>
+          <label>Hücre <select id="ug-step"><option value="1">1 zaman</option><option value="0.5">½ zaman</option></select></label>
+          <span>Izgara şunu düzenler:
+            <button type="button" class="btn-ghost" id="ug-t0" style="border-color:var(--gold);color:var(--gold-bright);">Normal</button>
+            <button type="button" class="btn-ghost" id="ug-t1">Velveleli</button></span>
+        </div>
+        <div id="ub-grid" class="ugrid"></div>
+        <div class="ug-bar ui">
+          <button type="button" class="btn-ghost" id="ug-play">▶ Dinle</button>
+          <label>Tempo <input type="range" id="ug-bpm" min="30" max="240" value="100"></label>
+          <span style="font-size:.72rem;color:var(--ink-faint);">Kareye bas: altın = düm, yeşil = tek. Boş kareler önceki vuruşun devamıdır.</span>
+        </div>
         <div id="ub-prev" class="usul-scroll"></div>
         <div style="display:flex; gap:.6rem; align-items:center;"><button type="button" class="btn-primary" id="ub-save">Kaydet</button><span id="ub-status" style="font-size:.78rem;color:var(--ink-dim);"></span></div>
+      </div>
+    </div>
+    <div class="usul-box" style="margin-top:1rem;">
+      <p class="ui usul-title">Ses ayarı (bu cihazda saklanır)</p>
+      <div class="ug-bar ui">
+        <label>Düm notası <select id="ss-D"></select></label><button type="button" class="btn-ghost" id="ss-pD">▶</button>
+        <label>Tek notası <select id="ss-T"></select></label><button type="button" class="btn-ghost" id="ss-pT">▶</button>
+        <button type="button" class="btn-ghost" id="ss-reset">Sıfırla</button>
       </div>
     </div>
     <div id="usulList2" style="margin-top:1rem; display:grid; gap:.4rem;"></div>
@@ -2137,16 +2171,28 @@ function usulStop(){
   if(usulTimer){ clearTimeout(usulTimer); usulTimer = null; }
   if(usulActive){
     usulActive.box.querySelectorAll('.us-hit').forEach(el => el.style.opacity = '');
+    usulActive.box.querySelectorAll('.gcell.playing').forEach(el => el.classList.remove('playing'));
     usulActive.btn.textContent = '▶ Çal';
     usulActive = null;
   }
 }
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function noteList(){ const l = []; for(let o = 1; o <= 6; o++) NOTE_NAMES.forEach(n => l.push(n + o)); return l; }
+function noteFreq(name){
+  const m = String(name).match(/^([A-G]#?)(\d)$/); if(!m) return 110;
+  const midi = (Number(m[2]) + 1) * 12 + NOTE_NAMES.indexOf(m[1]);
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+const SES_DEF = {D:'A2', T:'E4'};
+let usulSes = Object.assign({}, SES_DEF);
+function loadSes(){ try{ const j = JSON.parse(localStorage.getItem('usul_ses') || 'null'); if(j) usulSes = Object.assign({}, SES_DEF, j); }catch(e){} }
+function saveSes(){ try{ localStorage.setItem('usul_ses', JSON.stringify(usulSes)); }catch(e){} }
 function usulBeep(tip){
   try{
     usulCtx = usulCtx || new (window.AudioContext || window.webkitAudioContext)();
     if(usulCtx.state === 'suspended') usulCtx.resume();
     const o = usulCtx.createOscillator(), g = usulCtx.createGain(), t = usulCtx.currentTime;
-    o.frequency.value = tip === 'D' ? 110 : 330;
+    o.frequency.value = noteFreq(usulSes[tip === 'D' ? 'D' : 'T']);
     o.type = tip === 'D' ? 'sine' : 'triangle';
     g.gain.setValueAtTime(tip === 'D' ? 0.9 : 0.35, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + (tip === 'D' ? 0.35 : 0.12));
@@ -2265,7 +2311,126 @@ function usulBuilderPreview(){
     : `<p class="ui" style="font-size:.78rem;color:var(--ink-faint);margin:0;">${kalip.trim() ? 'Kalıp anlaşılamadı. Örnek: Düm2 Tek1 Tek1 ya da Yürük Semai + Sofyan' : 'Önizleme burada çıkar.'}</p>`;
   return u;
 }
+// --- Izgara (step sequencer) editörü ---
+const ug = {n:8, step:1, cells:[], target:0};   // target 0 = normal alanı, 1 = velveleli alanı
+function ugField(){ return document.getElementById(ug.target ? 'ub-vel' : 'ub-kalip'); }
+function ugNum(x){ return String(Math.round(x * 10) / 10); }
+function ugToKalip(){
+  if(!ug.cells.length || !ug.cells[0]) return '';
+  const toks = [];
+  for(let i = 0; i < ug.n; i++){
+    if(!ug.cells[i]) continue;
+    let j = i + 1; while(j < ug.n && !ug.cells[j]) j++;
+    toks.push(ug.cells[i] + ugNum((j - i) * ug.step));
+  }
+  return toks.join(' ');
+}
+function ugFromText(text){
+  ug.cells = [];
+  const t = String(text || '').trim();
+  if(!t){ ug.cells = new Array(ug.n).fill(null); return true; }
+  const u = parseKalip(t, 0); if(!u) return false;
+  let step = ug.step;
+  if(u.v.some(x => Math.abs(x[1] % 1) > 1e-9)) step = 0.5;
+  if(u.v.some(x => Math.abs((x[1] / step) % 1) > 1e-9)) return false;
+  ug.step = step; ug.n = Math.max(1, Math.round(u.zaman / step));
+  ug.cells = new Array(ug.n).fill(null);
+  let pos = 0; u.v.forEach(([tip, dur]) => { ug.cells[pos] = tip; pos += Math.round(dur / step); });
+  return true;
+}
+function ugSyncControls(){
+  document.getElementById('ug-n').value = ug.n * ug.step;
+  document.getElementById('ug-step').value = String(ug.step);
+  document.getElementById('ug-t0').style.cssText = ug.target ? '' : 'border-color:var(--gold);color:var(--gold-bright);';
+  document.getElementById('ug-t1').style.cssText = ug.target ? 'border-color:var(--gold);color:var(--gold-bright);' : '';
+}
+function ugRender(){
+  const wrap = document.getElementById('ub-grid'); if(!wrap) return;
+  const beatEvery = Math.round(1 / ug.step);
+  let hold = null, html = '<div class="ug-row"><div class="ug-lab"></div>';
+  for(let c = 0; c < ug.n; c++) html += `<div class="ug-num${c % beatEvery === 0 ? ' beat' : ''}" style="${c % beatEvery === 0 ? 'margin-left:3px;' : ''}">${c % beatEvery === 0 ? (c / beatEvery + 1) : ''}</div>`;
+  html += '</div>';
+  ['D','T'].forEach(r => {
+    html += `<div class="ug-row"><div class="ug-lab">${r === 'D' ? 'Düm' : 'Tek'}</div>`;
+    hold = null;
+    for(let c = 0; c < ug.n; c++){
+      if(ug.cells[c]) hold = ug.cells[c];
+      const on = ug.cells[c] === r;
+      html += `<button type="button" class="gcell${c % beatEvery === 0 ? ' beat' : ''}${on ? ' on-' + r : ''}${!on && hold === r ? ' ug-hold' : ''}" data-r="${r}" data-c="${c}" aria-label="${r === 'D' ? 'Düm' : 'Tek'} ${c + 1}"></button>`;
+    }
+    html += '</div>';
+  });
+  wrap.innerHTML = html;
+}
+function ugCommit(){
+  const txt = ugToKalip();
+  ugField().value = txt;
+  ugRender(); usulBuilderPreview();
+}
+function ugResize(){
+  const nz = Math.max(1, Math.min(32, Number(document.getElementById('ug-n').value) || 8));
+  const step = Number(document.getElementById('ug-step').value) || 1;
+  const old = ug.cells.map((v, i) => v ? [i * ug.step, v] : null).filter(Boolean);
+  ug.step = step; ug.n = Math.round(nz / step);
+  ug.cells = new Array(ug.n).fill(null);
+  old.forEach(([t, v]) => { const i = Math.round(t / step); if(Math.abs(t / step - i) < 1e-9 && i < ug.n) ug.cells[i] = v; });
+  ugRender(); ugCommit();
+}
+function ugInit(){
+  const wrap = document.getElementById('ub-grid'); if(!wrap) return;
+  ug.cells = new Array(ug.n).fill(null); ugSyncControls(); ugRender();
+  wrap.addEventListener('click', e => {
+    const b = e.target.closest('.gcell'); if(!b) return;
+    const c = Number(b.dataset.c), r = b.dataset.r;
+    ug.cells[c] = ug.cells[c] === r ? null : r;
+    ugCommit();
+  });
+  document.getElementById('ug-n').addEventListener('change', ugResize);
+  document.getElementById('ug-step').addEventListener('change', ugResize);
+  [0, 1].forEach(t => document.getElementById('ug-t' + t).addEventListener('click', () => {
+    ug.target = t;
+    if(!ugFromText(ugField().value)){ ug.cells = new Array(ug.n).fill(null); }
+    ugSyncControls(); ugRender();
+  }));
+  ['ub-kalip', 'ub-vel'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+    if(ugField().id !== id) return;
+    if(ugFromText(ugField().value)){ ugSyncControls(); ugRender(); }
+  }));
+  const playBtn = document.getElementById('ug-play');
+  playBtn.addEventListener('click', () => {
+    const same = usulActive && usulActive.btn === playBtn;
+    usulStop(); if(same) return;
+    const u = parseKalip(ugField().value, 0);
+    if(!u){ document.getElementById('ub-status').textContent = 'Önce ızgarada en az bir vuruş seç (ilk kare dolu olmalı).'; return; }
+    usulActive = {box: wrap, btn: playBtn}; playBtn.textContent = '■ Durdur';
+    let i = 0, pos = 0;
+    const tick = () => {
+      wrap.querySelectorAll('.gcell.playing').forEach(el => el.classList.remove('playing'));
+      const c = Math.round(pos / ug.step);
+      wrap.querySelectorAll('.gcell[data-c="' + c + '"]').forEach(el => el.classList.add('playing'));
+      usulBeep(u.v[i][0]);
+      const dur = u.v[i][1]; pos += dur; i++;
+      if(i >= u.v.length){ i = 0; pos = 0; }
+      usulTimer = setTimeout(tick, dur * 60000 / Number(document.getElementById('ug-bpm').value));
+    };
+    tick();
+  });
+  // Ses ayarı
+  loadSes();
+  ['D', 'T'].forEach(r => {
+    const sel = document.getElementById('ss-' + r);
+    sel.innerHTML = noteList().map(n => `<option value="${n}">${n}</option>`).join('');
+    sel.value = usulSes[r];
+    sel.addEventListener('change', () => { usulSes[r] = sel.value; saveSes(); usulBeep(r); });
+    document.getElementById('ss-p' + r).addEventListener('click', () => usulBeep(r));
+  });
+  document.getElementById('ss-reset').addEventListener('click', () => {
+    usulSes = Object.assign({}, SES_DEF); saveSes();
+    ['D', 'T'].forEach(r => { document.getElementById('ss-' + r).value = usulSes[r]; });
+  });
+}
 document.addEventListener('DOMContentLoaded', () => {
+  ugInit();
   const k = document.getElementById('ub-kalip'); if(k) k.addEventListener('input', usulBuilderPreview);
   const kv = document.getElementById('ub-vel'); if(kv) kv.addEventListener('input', usulBuilderPreview);
   const s = document.getElementById('ub-save'); if(s) s.addEventListener('click', async () => {
@@ -2281,7 +2446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     st.textContent = 'Kaydediliyor…';
     const r = await pushOzel();
     st.textContent = r.ok ? 'Kaydedildi ✓ (tüm cihazlarda görünür)' : 'Bu cihazda kaydedildi' + (r.reason === 'token yok' ? ' (bu cihazda token yok, GitHub\'a gitmedi).' : ' (GitHub: ' + r.reason + ').');
-    document.getElementById('ub-ad').value = ''; document.getElementById('ub-kalip').value = ''; document.getElementById('ub-vel').value = ''; usulBuilderPreview();
+    document.getElementById('ub-ad').value = ''; document.getElementById('ub-kalip').value = ''; document.getElementById('ub-vel').value = ''; ug.cells = new Array(ug.n).fill(null); ugRender(); usulBuilderPreview();
     renderUsulView(); renderMakamDatalist();
   });
   usulBuilderPreview();
