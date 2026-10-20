@@ -2175,6 +2175,7 @@ function usulStop(){
     usulActive.btn.textContent = '▶ Çal';
     usulActive = null;
   }
+  try{ if(usulAudioEl) usulAudioEl.pause(); }catch(e){}
 }
 const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 function noteList(){ const l = []; for(let o = 1; o <= 6; o++) NOTE_NAMES.forEach(n => l.push(n + o)); return l; }
@@ -2187,16 +2188,40 @@ const SES_DEF = {D:'A2', T:'E4'};
 let usulSes = Object.assign({}, SES_DEF);
 function loadSes(){ try{ const j = JSON.parse(localStorage.getItem('usul_ses') || 'null'); if(j) usulSes = Object.assign({}, SES_DEF, j); }catch(e){} }
 function saveSes(){ try{ localStorage.setItem('usul_ses', JSON.stringify(usulSes)); }catch(e){} }
+let usulAudioEl = null;
+function silentWavUrl(){
+  const sr = 8000, n = sr, b = new Uint8Array(44 + n);
+  const w = (o, str) => { for(let k = 0; k < str.length; k++) b[o + k] = str.charCodeAt(k); };
+  const u32 = (o, v) => { b[o] = v & 255; b[o+1] = (v >> 8) & 255; b[o+2] = (v >> 16) & 255; b[o+3] = (v >> 24) & 255; };
+  w(0,'RIFF'); u32(4, 36 + n); w(8,'WAVE'); w(12,'fmt '); u32(16,16); b[20]=1; b[22]=1; u32(24,sr); u32(28,sr); b[32]=1; b[34]=8; w(36,'data'); u32(40,n);
+  for(let k = 0; k < n; k++) b[44 + k] = 128;
+  return URL.createObjectURL(new Blob([b], {type:'audio/wav'}));
+}
+// iPhone'da sessiz mod (yan düğme) Web Audio'yu keser; sessiz bir <audio> döngüsü sesi "medya" kategorisine alır.
+function usulUnlockAudio(){
+  try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+  try{
+    if(!usulAudioEl){ usulAudioEl = new Audio(silentWavUrl()); usulAudioEl.loop = true; usulAudioEl.setAttribute('playsinline',''); }
+    if(usulAudioEl.paused){ const p = usulAudioEl.play(); if(p && p.catch) p.catch(() => {}); }
+  }catch(e){}
+}
 function usulBeep(tip){
   try{
+    usulUnlockAudio();
     usulCtx = usulCtx || new (window.AudioContext || window.webkitAudioContext)();
     if(usulCtx.state === 'suspended') usulCtx.resume();
-    const o = usulCtx.createOscillator(), g = usulCtx.createGain(), t = usulCtx.currentTime;
-    o.frequency.value = noteFreq(usulSes[tip === 'D' ? 'D' : 'T']);
-    o.type = tip === 'D' ? 'sine' : 'triangle';
-    g.gain.setValueAtTime(tip === 'D' ? 0.9 : 0.35, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + (tip === 'D' ? 0.35 : 0.12));
-    o.connect(g); g.connect(usulCtx.destination); o.start(t); o.stop(t + 0.4);
+    const t = usulCtx.currentTime, f = noteFreq(usulSes[tip === 'D' ? 'D' : 'T']), dec = tip === 'D' ? 0.45 : 0.18;
+    const g = usulCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(tip === 'D' ? 1.0 : 0.6, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dec);
+    g.connect(usulCtx.destination);
+    // Ana ses + üst harmonikler: telefon hoparlörü alçak perdeleri çalamaz, harmonikler düm'ü duyulur yapar.
+    [[1, tip === 'D' ? 'sine' : 'triangle', 1], [2, 'triangle', 0.55], [3, 'sine', 0.3]].forEach(([mul, type, vol]) => {
+      const o = usulCtx.createOscillator(), og = usulCtx.createGain();
+      o.type = type; o.frequency.value = f * mul; og.gain.value = vol;
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + dec + 0.05);
+    });
   }catch(e){}
 }
 // Sayfadaki tüm .usul-box[data-usul] kutularını çalar hâline getirir. listFor(box) → usûl nesnesi
