@@ -247,6 +247,10 @@
   .mk-sec{margin:0 0 .9rem;} .mk-sec h4{margin:0 0 .25rem; font-family:'Inter',sans-serif; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); font-weight:500;}
   .mk-sec p{margin:0; font-size:.95rem; line-height:1.55; color:var(--ink);}
   .mk-gap{font-size:.78rem; color:var(--ink-faint); border:0.5px dashed var(--border-strong); border-radius:8px; padding:.5rem .7rem; font-family:'Inter',sans-serif;}
+  .mk-panel{background:var(--panel-2); border:0.5px solid var(--gold-dim); border-radius:10px; padding:.9rem 1rem; margin:0 0 1.1rem;}
+  .mk-chips{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:.5rem; font-size:.8rem; color:var(--ink);}
+  .mk-chips div{background:var(--panel-3); border-radius:8px; padding:.4rem .6rem; line-height:1.35;}
+  .mk-chips span{display:block; font-size:.65rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:.1rem;}
 </style>
 </head>
 <body>
@@ -322,10 +326,20 @@
     </div>
     <div class="usul-box" style="margin-top:1rem;">
       <p class="ui usul-title">Ses ayarı (bu cihazda saklanır)</p>
+      <div class="ug-bar ui" style="margin-bottom:.6rem;">
+        <label>Ses tipi <select id="ss-tip"><option value="bendir">Bendir (sentez)</option><option value="elektronik">Elektronik</option><option value="ornek">Kendi kayıtlarım</option></select></label>
+        <span style="font-size:.72rem;color:var(--ink-faint);">Notalar Bendir ve Elektronik sesin perdesini belirler.</span>
+      </div>
       <div class="ug-bar ui">
         <label>Düm notası <select id="ss-D"></select></label><button type="button" class="btn-ghost" id="ss-pD">▶</button>
         <label>Tek notası <select id="ss-T"></select></label><button type="button" class="btn-ghost" id="ss-pT">▶</button>
         <button type="button" class="btn-ghost" id="ss-reset">Sıfırla</button>
+      </div>
+      <div class="ug-bar ui" style="margin-top:.7rem;">
+        <label>Kendi düm kaydım <input type="file" id="ss-fD" accept="audio/*"></label>
+        <label>Kendi tek kaydım <input type="file" id="ss-fT" accept="audio/*"></label>
+        <button type="button" class="btn-ghost" id="ss-fdel">Kayıtlarımı sil</button>
+        <span id="ss-ornek" style="font-size:.74rem;color:var(--ink-faint);"></span>
       </div>
     </div>
     <div id="usulList2" style="margin-top:1rem; display:grid; gap:.4rem;"></div>
@@ -382,7 +396,7 @@
 </div>
 
 <div class="modal-overlay" id="makamOverlay" style="display:none;">
-  <div class="modal">
+  <div class="modal" style="max-width:640px;">
     <div id="makamContent"></div>
     <div class="modal-actions"><button type="button" class="btn-ghost" id="closeMakamBtn">Kapat</button></div>
   </div>
@@ -793,7 +807,7 @@ function renderContent(){
       html += `</div>`;
     });
   } else {
-    html += `<h2 class="group-heading">${escapeHtml(currentMakam)}<button type="button" class="mk-btn" data-makam="${escapeAttr(currentMakam)}">ⓘ Makam hakkında</button></h2><div class="grid">`;
+    html += `<h2 class="group-heading">${escapeHtml(currentMakam)}</h2>${makamPanelHtml(currentMakam)}<div class="grid">`;
     items.forEach(item => html += cardHtml(item));
     html += `</div>`;
   }
@@ -2075,45 +2089,514 @@ const USULLER = [
 USULLER.push({ad:'Devr-i Kebir', zaman:28, tek:true, not:'Notasyon görselinden okundu, hocanla doğrula',
   v:[['D',2],['D',2],['T',2],['D',1],['T',1],['T',.5],['T',.5],['D',1],['T',2],['T',2],['T',2],['D',2],['D',2],['T',2],['T',2],['T',1],['T',1],['T',1],['T',1]]});
 // --- Makam tanıtımları ---
-// Yalnızca kaynağı doğrulanmış bilgi yazılır; kaynakta bulunmayan başlıklar "henüz doğrulanmadı" olarak işaretlenir.
-// Daha fazla makam: repodaki makamlar.json dosyası (aynı biçim) buradaki kayıtların üstüne yazılır.
-let MAKAM_INFO = {
-  'Uşşak': {
-    ozet: 'Karar sesi Dügâh olan, çıkıcı seyirli bir makamdır. Alt çeşnisi Uşşak dörtlüsü, üst çeşnisi Bûselik beşlisidir.',
-    bolumler: [
-      {b:'Dizi ve temel perdeler', m:'Karar (durak): Dügâh. Tiz durak: Muhayyer. Güçlü: Neva. Yeden: Rast. Perdeler: Dügâh, Segâh, Çargâh, Neva, Hüseynî, Acem, Gerdâniye, Muhayyer. Alt çeşni Dügâh–Neva arası Uşşak dörtlüsü; Neva\'dan sonra Bûselik beşlisi gelir.'},
-      {b:'Seyir', m:'Çıkıcı.'},
-      {b:'Komşu makamlar', m:'Bayâtî ile aynı diziyi paylaşır (Uşşak, Bayâtî dizisinin uygulamasıdır). Hüseynî ile perdeleri aynıdır ama Hüseynî\'de güçlü sesi 4. perde yerine 5. perdededir. Yeden Rast, durak kabul edilince Uşşak, Rast\'a bağlanan bir seyir gibi işler ve iki makam arasında geçki yapılabilir.'},
-      {b:'Tarihçe', m:'Safiyüddin Urmevî (1216–1294) Uşşak\'ı önce dörtlü bir tabaka olarak, sonra bir daire olarak tanımlamıştır. 15. yüzyıldan sonraki edvar ve risalelerde bu kullanım terk edilmiştir. Ad yüzyıllardır aynı kalsa da ezgisel yapı sürekli değişmiş; farklı dönemlerde Uşşak adıyla anılan makamlar arasında 13. yy\'da Nevruz, 15. yy\'da Rekb/Çargâh-ı Rekb, 18. yy\'da Dügâh-ı Kadîm ve Hüzî gösterilir. Bu makalenin yazarına göre Uşşak\'ın teorik altyapısı yeterince ele alınmamış ve bu yanlış anlamalara yol açmaktadır.'}
-    ],
-    eksik: ['Adının kökeni', 'Kullanılan arızalar (Bûselik, Hüseynî vb. ayrıntısı)', 'Seyrin aşamaları ve geçkiler', 'Ünlü eserler ve bestekârlar', 'Yaygınlığı'],
-    kaynaklar: [['Uşşak (Turkish makam) — Wikipedia','https://en.wikipedia.org/wiki/U%C5%9F%C5%9Fak_(Turkish_makam)'],['İrden, S. (2025). Tarihsel süreçlere göre Uşşak makamı. Yegah Musicology Journal 8(2)','https://avesis.kocaeli.edu.tr/yayin/356c32c0-76e6-4902-b80f-82f21475075e/ussak-makam-according-to-historical-processes-tarihsel-sureclere-gore-ussak-makami']]
-  }
+// Varsayılan içerik: TDV İslâm Ansiklopedisi (İsmail Hakkı Özkan, Cinuçen Tanrıkorur), Wikipedia ve akademik makale özetlerinden derlendi.
+// Kaynakta bulunmayan alan boş bırakıldı ve "Henüz doğrulanmadı" olarak görünür. Her alan uygulamadan düzenlenebilir;
+// düzenlemeler bu cihazda saklanır, token varsa repodaki makamlar.json dosyasına da yazılır (tüm cihazlarda görünür).
+const MAKAM_DEFAULT = {
+ "Uşşak": {
+  "ozet": "Karar sesi dügâh olan, çıkıcı seyirli basit bir makamdır; tarih içinde çok kullanılan temel makamlardan biridir.",
+  "dizi": "Dügâh perdesinde bir uşşak dörtlüsü ile nevâ perdesinde bir bûselik beşlisinin birleşmesinden oluşur. Pestten tize: dügâh, segâh, çârgâh, nevâ, hüseynî, acem, gerdâniye, muhayyer.",
+  "durak": "Dügâh (tam karar uşşak çeşnisiyle)",
+  "guclu": "Nevâ (yarım karar bûselik çeşnisiyle)",
+  "yeden": "Rast",
+  "seyir": "Çıkıcı",
+  "arizalar": "Donanımda yalnızca si için koma bemolü vardır. İnici seyirde segâh perdesi 1-2 koma daha pest basılır. Dügâh ile segâh arasında 6-7 komalık \"eksik büyük mücennep\" aralığı oluşur. Asma kararların en önemlisi segâhtadır. Uşşak ve rast çeşnileri arasında tanînî aralığı bulunur. Yakın akrabası Bayâtî'dir; çârgâh asma kararlarıyla Uşşak-Hûzî oluşur.",
+  "tarihce": "Safiyüddin Urmevî (1216–1294) Uşşak'ı önce dörtlü bir tabaka, sonra bir daire olarak tanımlamıştır. 15. yüzyıldan sonraki edvar ve risalelerde bu kullanım terk edilmiş; ad aynı kalırken ezgisel yapı sürekli değişmiştir. Farklı dönemlerde Uşşak adıyla anılan makamlar arasında 13. yy'da Nevruz, 15. yy'da Rekb/Çargâh-ı Rekb, 18. yy'da Dügâh-ı Kadîm ve Hüzî gösterilir (İrden, 2025). TDV maddesi ilk geçtiği kaynağı ve adının kökenini yazmaz; kaynakçada Seydî'nin el-Matla' eseri vardır.",
+  "onemli": "Nâyî Osman Dede (devr-i kebîr peşrevi, Mevlevî âyini), Neyzen Aziz Dede (aksak semâi), Kemânî Tatyos Efendi, Haydar Tatlıyay (peşrev ve saz semâisi), Şerif Muhittin Targan (saz semâisi), Zekâi Dede (sakîl, ağır semâi, nîm-sofyan ilâhi), Çömlekçizâde Receb Çelebi (yürük semâi); şarkılar: Hacı Ârif Bey, Şevki Bey, Lemi Atlı, Giriftzen Âsım Bey, Şerif İçli; ilâhiler: Muallim İsmail Hakkı Bey, Süleyman Erguner, Hüseyin Sebilci.",
+  "kaynaklar": [
+   [
+    "UŞŞAK — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/ussak"
+   ],
+   [
+    "İrden, S. (2025). Tarihsel süreçlere göre Uşşak makamı. Yegah Musicology Journal 8(2)",
+    "https://avesis.kocaeli.edu.tr/yayin/356c32c0-76e6-4902-b80f-82f21475075e/ussak-makam-according-to-historical-processes-tarihsel-sureclere-gore-ussak-makami"
+   ],
+   [
+    "Uşşak (Turkish makam) — Wikipedia",
+    "https://en.wikipedia.org/wiki/U%C5%9F%C5%9Fak_(Turkish_makam)"
+   ]
+  ]
+ },
+ "Rast": {
+  "ozet": "Türk mûsikisi kuramının merkezinde duran, rast perdesinde karar eden temel makamdır. Rauf Yekta Bey'in modelinde klasik müziğin \"gamme naturale\"i sayılır.",
+  "dizi": "Alt çeşni rast beşlisi; üst çeşni çıkışta rast dörtlüsü, inişte bûselik dörtlüsüdür. Alt genişleme yegâh üzerinde rast dörtlüsüdür. Pestten tize: rast, dügâh, segâh, çârgâh, nevâ, hüseynî, eviç (çıkışta) veya acem (inişte), gerdâniye.",
+  "durak": "Rast (tiz durak gerdâniye)",
+  "guclu": "Nevâ",
+  "yeden": "Irak (inişte acem)",
+  "seyir": "Çıkıcı (Wikipedia)",
+  "arizalar": "İnişte ırak perdesi acem'e (4 koma) indirilir; inen Rast, Acemli Rast ile aynı kabul edilir. TDV maddesi donanım, arıza ve seyir ayrıntısı vermez.",
+  "tarihce": "Arel-Ezgi-Uzdilek notasyon sisteminde kuramın merkezindeki dizi Çârgâh olsa da Rauf Yekta Bey'in modelinde Rast, kuramın dayandığı dizidir. TDV maddesi ilk geçtiği kaynağı ve adının kökenini yazmaz.",
+  "onemli": "Benli Hasan Ağa (peşrevler), Solakzâde Mehmed Hemdemî ve Tatyos Efendi (saz semâileri), Abdülkādir-i Merâgī, Hatibzâde, Hamâmîzâde İsmâil Dede, Tab'î Mustafa Efendi, Zaharya, Taşçızâde Receb Çelebi, Tatyos Efendi ve Hacı Ârif Bey (kâr, şarkı, semâi), Hâfız Post (yürük semâi), Itrî (na't), Drağman Zâkiri Ahmed Efendi (tevşih), Zekâî Dede (ilâhi).",
+  "kaynaklar": [
+   [
+    "RAST — TDV İslâm Ansiklopedisi (Kürebilgi)",
+    "https://kureansiklopedi.com/tr/detay/rast-2"
+   ],
+   [
+    "Rast (Turkish makam) — Wikipedia",
+    "https://en.wikipedia.org/wiki/Rast_(Turkish_makam)"
+   ],
+   [
+    "Turkish makam — Wikipedia",
+    "https://en.wikipedia.org/wiki/Turkish_makam"
+   ]
+  ]
+ },
+ "Hicaz": {
+  "ozet": "Karar sesi dügâh olan, hicaz dörtlüsü ile rast beşlisinden kurulu bir makamdır.",
+  "dizi": "Dügâh perdesinde hicaz dörtlüsü ile nevâ perdesinde rast beşlisi. Hicaz perdesi, çârgâha mücennep diyezi veya nevâya bakiye bemolü getirilerek (bûselik perdesine tanînî diyezi eklenerek de) elde edilir.",
+  "durak": "Dügâh (tam karar hicaz dörtlüsünde)",
+  "guclu": "Nevâ (yarım karar rast çeşnisiyle)",
+  "yeden": "Rast (bazı klasik formlarda nîm-zirgüle)",
+  "seyir": "İnici-çıkıcı, bazen çıkıcı",
+  "arizalar": "Donanım: si için bakiye bemolü (dik-kürdî), fa ve do için bakiye diyezi (eviç, nîm-hicaz). Diğer değişiklikler eser içinde gösterilir. Seyre durak veya güçlü civarından başlanır. Asma kararlar: nevâda bûselik, hüseynîde uşşak ve hicaz; bunlarla hicaz ailesinin diğer makamlarına geçki yapılabilir.",
+  "tarihce": "TDV maddesi makamın ilk geçtiği kaynağı, bulanını ve adının kökenini yazmaz; kaynakçada Kantemiroğlu'nun İlmü'l-mûsikî'si anılır. (Hicaz, Arap yarımadasındaki bölgenin de adıdır; makam adının kökeni bu kaynakta açıklanmaz.)",
+  "onemli": "Nâyî Osman Dede ve Aziz Dede (devr-i kebîr peşrevleri), Hamâmîzâde İsmâil Dede (zencir ve ağır düyek), Ebûbekir Ağa (yürük semâi), Vardakosta Ahmed Ağa (Hicaz Mevlevî âyini), Dede Ömer Rûşenî (tevşih).",
+  "kaynaklar": [
+   [
+    "HİCAZ (makam) — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/hicaz--musiki"
+   ]
+  ]
+ },
+ "Nihavend": {
+  "ozet": "Rast perdesinde karar eden, Batı müziğindeki sol minöre benzetilen şed makamdır; son yüzyılda çok yaygındır.",
+  "dizi": "Bûselik makamı dizisinin rastta göçürülmesiyle elde edilir: rast perdesinde bûselik beşlisi, nevâ perdesinde kürdî veya hicaz dörtlüsü. Kürdî'li biçim \"eski minör\", hicazlı biçim \"armonik minör\"e karşılık gelir.",
+  "durak": "Rast (bûselik çeşnisiyle)",
+  "guclu": "Nevâ (kürdî, seyrek hicaz ile yarım karar)",
+  "yeden": "Irak (fa diyezi), tam karar genellikle yedenli",
+  "seyir": "İnici-çıkıcı",
+  "arizalar": "Donanım: si ve mi için küçük mücennep bemolü. Seyir genelde inici-çıkıcıdır; son yüzyılda çoğu zaman salt çıkıcı ya da inici görülür. Asma kararlar: nîm-hisar, çârgâh, kürdî, dügâh. Arada kısa bir neveser geçkisi olabilir; hicazlı kullanımda dik-hisar'lı uşşak dörtlüsü katılabilir. Genişleme: tizde gerdâniyedeki bûselik beşlisi (kürdî veya hümâyun dizisi), pestte yegâhta hicaz dörtlüsü.",
+  "tarihce": "Adı İran'daki Nihâvend şehrinden gelir (ırak, hicaz, nişâbur, tebriz gibi). Eski adı \"nihâvend-i rûmî\"dir; \"nihâvend-i kebîr\"den ayırt etmek için bırakılmıştır. TDV maddesi ilk geçtiği kaynağı ve yüzyılı yazmaz, yalnızca önceki dönemlerde de kullanıldığını belirtir.",
+  "onemli": "Hacı Fâik Bey (zencir şarkı), Ali Rifat Çağatay (lenk fahte), İsmail Hakkı Bey (ağır semâi), Tanbûrî Ali Efendi (yürük semâi), Hacı Ârif Bey (curcuna ve ağır aksak şarkılar), Vardakosta Ahmed Ağa (Mevlevî âyini), Doğan Ergin ve Ahmet Hatipoğlu (sofyan ilâhi).",
+  "kaynaklar": [
+   [
+    "NİHÂVEND — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/nihavend--musiki"
+   ]
+  ]
+ },
+ "Segah": {
+  "ozet": "Karar sesi si koma bemol (segâh) olan, çıkıcı karakterli birleşik makamdır. Tarih boyunca dinî ve din dışı müzikte yaygın kullanılmıştır.",
+  "dizi": "Segâh beşlisi (segâh, çârgâh, nevâ, dik-hisar/hüseynî, eviç/acem) esastır. İki biçimi vardır: (1) segâh beşlisi + eviçte hicaz dörtlüsü + nevâda uşşak-bayâtî dizisi; (2) nevâdaki uşşak ve gerdâniyedeki bûselik özelliklerinin öne çıktığı biçim, ki çok daha sık kullanılır. Ayrıca eksik segâh beşlisi (acemli) ve tam/eksik ferahnâk beşlisi biçimleri vardır.",
+  "durak": "Segâh (tam karar segâh çeşnisiyle)",
+  "guclu": "Nevâ",
+  "yeden": "Kürdî (la bakiye diyezi)",
+  "seyir": "Çıkıcı karakterli",
+  "arizalar": "Si ve mi için koma bemolü, fa için bakiye diyezi; la ve do yalnız şed olarak gelir. Asma kararlar bûselik ve uşşaktadır. Pestte rast ve yegâhtaki rast çeşnisiyle genişler; yeden kürdî ile ırağa inildiğinde hicaz dörtlüsü oluşur.",
+  "tarihce": "TDV maddesine göre oluşum tarihi bilinmez; ilk olarak Seydî, sonra Kantemiroğlu ve Abdülbâki Nâsır Dede anmıştır. Adı Farsça \"se-gâh\" (üçüncü yer) sözcüğünden gelir; Rast dizisinin üçüncü derecesinden başladığı için bu adı almıştır (Wikipedia). Müstear, segâh mâye ve rûy-i ırak makamlarının oluşumunda segâh dizileri temel unsurdur.",
+  "onemli": "Şerîf, Nâyî Osman Dede, II. Gazi Giray Han (peşrevler), Yûsuf Paşa, Nâyî Osman Dede, Sâlih Dede (saz semâileri), Abdülkādir-i Merâgī (kâr), Itrî (semâi), Hacı Ârif Bey, Hacı Fâik Bey (şarkılar), Hamâmîzâde İsmâil Dede Efendi, Hâfız Ahmet Irsoy (ilâhiler).",
+  "kaynaklar": [
+   [
+    "SEGÂH — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/segah"
+   ],
+   [
+    "Segah — Wikipedia",
+    "https://en.wikipedia.org/wiki/Segah"
+   ]
+  ]
+ },
+ "Hüzzam": {
+  "ozet": "Karar sesi segâh olan birleşik makamdır; Türk mûsikisinin neredeyse her formunda yoğun kullanılmış, dinî, tasavvufî ve lirik, çoğunlukla hüzünlü bir karakter taşır.",
+  "dizi": "Yerindeki hüzzam beşlisine eviç perdesinde bir hicaz dörtlüsü eklenir; nevâ perdesi üzerindeki hümâyun dizisi de makamın parçasıdır. Hüzzam beşlisi tam beşlidir; hisar perdesi notada gösterilen bakiye bemolünden biraz daha dik basılır.",
+  "durak": "Segâh (tam karar genellikle yedenli)",
+  "guclu": "Nevâ",
+  "yeden": "Kürdî (la bakiye diyezi)",
+  "seyir": "İnici-çıkıcı",
+  "arizalar": "Hisar perdesi çok değişkendir. Eviçte segâh dörtlüsü, dik-hisarda nikriz beşlisi, nevâda uşşak dörtlüsü, segâhta tam veya eksik segâh ve ferahnâk beşlisi gibi çeşniler kullanılır. Eviçteki hicaz dörtlüsü bazen küçük geçki olarak kullanılır, bazen hiç kullanılmaz. Rast ve dügâhta asma kararlar yapılır; pest genişlemesi sûzinak ve karcığar dizilerini oluşturur.",
+  "tarihce": "TDV maddesi ilk geçtiği kaynağı, yüzyılı ve adının kökenini yazmaz; yalnızca makamın tarih boyunca yaygın kullanıldığını belirtir.",
+  "onemli": "Şehzade Seyfeddin Efendi (muhammes peşrev), Nevres Bey (saz semâisi), Hamâmîzâde İsmâil Dede Efendi (Mevlevî âyini; darbeyn ve yürük semâi), Kömürcüzâde Hâfız Mehmed Efendi (remel), Kemânî Âmâ Corci (ağır semâi), Hâfız Yûsuf Efendi, Hacı Ârif Bey, Yesârî Âsım Arsoy (şarkılar), Hacı Fâik Bey (düyek tevşih), Sadettin Kaynak (şuğul).",
+  "kaynaklar": [
+   [
+    "HÜZZAM — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/huzzam"
+   ]
+  ]
+ },
+ "Hüseynî": {
+  "ozet": "Karar sesi dügâh, güçlü sesi hüseynî perdesi olan makamdır. Uşşak ile aynı perdeleri paylaşır ama güçlü sesi farklıdır.",
+  "dizi": "Hüseynî beşlisine hüseynî perdesinden başlayan uşşak dörtlüsü eklenir. İkinci dizi \"acemli hüseynî\"dir: eviç yerine acem kullanılır, uşşak dörtlüsünün yerini kürdî dörtlüsü alır. Acemli hüseynî dizisi hemen bütün hüseynî eserlerde kullanılır.",
+  "durak": "Dügâh (tam karar hüseynî dizisiyle)",
+  "guclu": "Hüseynî (yarım karar uşşak çeşnisiyle)",
+  "yeden": "Rast",
+  "seyir": "İnici-çıkıcı",
+  "arizalar": "Donanım: si için koma bemolü (segâh), fa için bakiye diyezi (eviç). Seyre güçlü civarından başlanır. Asma kararlardan en önemlisi çârgâh, ikincisi segâhtır; nevâ ve rastta da asma karar yapılır. Genişleme: muhayyer perdesine bûselik beşlisi eklenerek uşşak dizisi, ya da hüseynî beşlisinin tiz durak muhayyere simetrik aktarılması.",
+  "tarihce": "TDV maddesi ilk geçtiği kaynağı ve adının kökenini yazmaz; kaynakçada Kantemiroğlu ve Abdülbâki Nâsır Dede anılır. Hüseynî aynı zamanda tiz sekizlinin dokuzuncu perdesinin (mi) adıdır.",
+  "onemli": "Zaharya (berefşân, ağır semâi), Ebûbekir Ağa (remel), Tab'î Mustafa Efendi (yürük semâi), Kara İsmâil Ağa (nakış yürük semâisi), Tanbûrî Ali Efendi (aksak semâi), Şevki Bey (curcuna), Hâfız Yûsuf Efendi (curcuna şarkısı), Hamâmîzâde İsmâil Dede Efendi (tevşih), Balat Şeyhi Kemal Efendi (devr-i revân ilâhi).",
+  "kaynaklar": [
+   [
+    "HÜSEYNÎ — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/huseyni"
+   ]
+  ]
+ },
+ "Kürdi": {
+  "ozet": "Karar sesi dügâh olan, kürdî dörtlüsü ile bûselik beşlisinden kurulu makamdır. Kendi seyir yerinde (dügâhta) az kullanılmış, kürdili-hicazkâr çeşidi sık kullanılmıştır.",
+  "dizi": "Dügâh perdesindeki kürdî dörtlüsüne nevâ perdesindeki bûselik beşlisinin eklenmesiyle oluşur. Kürdî perdesi, bûselik perdesine küçük mücennep bemolü ya da dügâha bakiye diyezi (veya çârgâha tanînî bemolü) konarak elde edilir.",
+  "durak": "Dügâh (tam karar kürdî dizisiyle)",
+  "guclu": "Nevâ",
+  "yeden": "Rast (zaman zaman nîm-zirgüle)",
+  "seyir": "Çıkıcı, bazen çıkıcı-inici",
+  "arizalar": "Donanım: si için küçük mücennep bemolü. Rast perdesindeki asma karar nihâvend makamına küçük bir geçkidir; nîm-hisar (mi bemol) katılırsa nihâvend dizisinin altı sesi kullanılmış olur, sonra ana diziye dönülmelidir.",
+  "tarihce": "TDV maddesi ilk geçtiği kaynağı ve adının kökenini yazmaz; kaynakçada Kantemiroğlu'nun İlmü'l-mûsikî'si vardır. Sonu kürdî ile biten birçok birleşik makam vardır. Dinî mûsikide çok az kullanılmıştır.",
+  "onemli": "Hâfız Rifat Süleyman Efendi (muhammes), Tab'î Mustafa Efendi (hafif ve yürük semâi), Hacı Fâik Bey (ağır semâi).",
+  "kaynaklar": [
+   [
+    "KÜRDÎ — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/kurdi"
+   ]
+  ]
+ },
+ "Acem Aşiran": {
+  "ozet": "Acem-aşîrân perdesinde karar eden, inici seyirli; en eski ve en çok kullanılan makamlardan biri olduğu söylenen makamdır (Cinuçen Tanrıkorur maddesi).",
+  "dizi": "",
+  "durak": "Acem-aşîrân",
+  "guclu": "Acem, çârgâh, dügâh (sırasıyla)",
+  "yeden": "",
+  "seyir": "İnici",
+  "arizalar": "Karar kalıbının arızası olan kürdî perdesi için bemol yazılır. Meyan geçkileri genellikle sabâ makamına yapılır. Makam, acem makamının icrasından sonra çârgâh dörtlüsü ile acem-aşîrân perdesinde karar verilerek oluşur. Bazı nazariyatçılar bu makamı Batı müziğindeki fa majörle eşleştirir; madde Türk makamları ile Batı tonaliteleri arasında ilişki bulunmadığını vurgular.",
+  "tarihce": "Dört buçuk asırlık bir geçmişi olduğu tahmin edilir. TDV maddesi ilk geçtiği kaynağı, yüzyılı ve adının kökenini yazmaz.",
+  "onemli": "Neyzen Sâlih Dede (devr-i kebîr peşrev), Şeyh Hüseyin Fahreddin Dede (âyîn-i şerîf), İsmâil Dede (ağır semâi), Zekâi Dede (muhammes ve düyek usullerinde eserler).",
+  "kaynaklar": [
+   [
+    "ACEM-AŞİRAN — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/acem-asiran"
+   ]
+  ]
+ },
+ "Acem Kürdi": {
+  "ozet": "Dügâh perdesinde karar eden, inici seyirli birleşik makamdır. Acem makamının icrası sırasında ortak perdeleri çok olan kürdî makamına geçilir.",
+  "dizi": "",
+  "durak": "Dügâh (kürdî ile ilişkili)",
+  "guclu": "Acem ve çârgâh",
+  "yeden": "",
+  "seyir": "İnici",
+  "arizalar": "Arel, Ezgi ve Karadeniz donanıma segâh bemolünü arıza olarak eklemiştir; madde, karar kalıbı arızalarının donanımda yazılmasının daha uygun olacağını belirtir. Kürdî nağmeleriyle sıklıkla nîm-hisar perdesi de kullanılarak karar verilir.",
+  "tarihce": "Terkip edeni bilinmez; iki asırdır kullanıldığı tahmin edilir. TDV maddesi ilk geçtiği kaynağı ve adının kökenini yazmaz.",
+  "onemli": "Altûnîzâde (zencir peşrev), Zekâi Dede (remel), Kaptanzâde Ali Rızâ Bey (devr-i hindî şarkı).",
+  "kaynaklar": [
+   [
+    "ACEM-KÜRDÎ — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/acem-kurdi"
+   ]
+  ]
+ },
+ "Kürdili Hicazkâr": {
+  "ozet": "Hacı Ârif Bey'in terkip ettiği, rast perdesinde karar eden, inici seyirli makamdır. Hacı Ârif Bey makama \"hicazkâr-ı kürdî\" ya da \"hicazkâr kürdî\" adını vermiştir.",
+  "dizi": "Dört biçimde kullanılır: (1) rast perdesindeki inici kürdî dörtlüsü + çârgâh perdesindeki bûselik dizisi; (2) hicazkâr makamının tiz ve orta bölge dizilerine (ya da bütününe) rastta inici kürdî dizisinin eklenmesi; (3) arazbar makamının tiz ve orta bölgelerine aynı rast kürdî dizisinin eklenmesi; (4) üçünün karışık kullanımı.",
+  "durak": "Rast (tam karar kürdî çeşnisiyle)",
+  "guclu": "Gerdâniye (kürdî, hicazlı veya bûselikli yarım karar)",
+  "yeden": "Acem-aşîrân (bûselik çeşnisiyle düşülür, zorunlu değil)",
+  "seyir": "İnici (tiz durak gerdâniye civarından başlanır)",
+  "arizalar": "Donanım: si, mi ve la için küçük mücennep bemolü; biçime özgü değişiklikler eser içinde gösterilir. 3. biçimde nevâ üzerindeki uşşak-bayâtî dizisinde hicaz ve nikriz geçkileri yapılabilir.",
+  "tarihce": "Makamı bestekâr ve hânende Hacı Ârif Bey terkip etmiştir. TDV maddesi ilk geçtiği kaynağı ve yüzyılı yazmaz.",
+  "onemli": "Münir Nurettin Selçuk, Muzaffer İlkar, Alâeddin Yavaşça, Hacı Ârif Bey, Hristaki Efendi, Rahmi Bey, Hacı Kirâmî Efendi, Gavsi Baykara, Suphi Ziya Özbekkan; madde bu eserleri makamın en güzel örneklerinden sayar.",
+  "kaynaklar": [
+   [
+    "KÜRDİLİ-HİCAZKÂR — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/kurdili-hicazkar"
+   ]
+  ]
+ },
+ "Suzidil": {
+  "ozet": "Abdülhalim Ağa'nın buluşu olan, zirgüleli hicaz dizisinin hüseynî-aşiran perdesine göçürülmesiyle elde edilen şed makamdır; inici seyirlidir.",
+  "dizi": "Pestten tize: hüseynî-aşiran, dik acem-aşiran, nîm-zirgüle, bûselik, çârgâh, nîm-hisar veya nevâ, hüseynî. Genişletilmiş kısımda dik-acem, nîm-şehnaz, muhayyer ve tiz bûselik yer alır.",
+  "durak": "Hüseynî-aşiran (tam karar); tiz durak hüseynî (başlangıç ve yarım karar)",
+  "guclu": "1. mertebe: tiz durak hüseynî; 2. mertebe: bûselik (dügâh da önemlidir)",
+  "yeden": "Porte altındaki bakiye diyezli re (kaba nîm-hisar)",
+  "seyir": "İnici",
+  "arizalar": "Donanım: fa için koma, sol ve re için bakiye diyezi. Hüseynî-aşirandaki zirgüleli hicaz, zirgüleli hümâyun dizisini oluşturur; dügâhta bûselik asma karar hisar-bûselik makamına geçkidir. Eserlerin çoğu hüseynî-aşiranda yedeni zirgüleli bir hümâyun dizisiyle karar verir.",
+  "tarihce": "Abdülhalim Ağa'ya atfedilir. TDV maddesi ilk geçtiği kaynağın yüzyılını ve adının kökenini yazmaz (kaynakçada Abdülbâki Nâsır Dede, Tedkîk ü Tahkîk).",
+  "onemli": "Abdülhalim Ağa (ağır düyek, saz semâisi), Tanbûrî Ali Efendi (devr-i kebîr peşrev, yürük ve aksak semâi/şarkılar), Hacı Sâdullah Ağa (ağır semâi), Şemseddin Ziyâ Bey (sengin semâi), Leon Hancıyan (curcuna), Leylâ Saz (ağır aksak), Zekâi Dede (Mevlevî âyini, düyek ilâhi), Hamâmîzade İsmâil Dede Efendi (düyek ilâhi), Selahattin Demirtaş (ilâhi).",
+  "kaynaklar": [
+   [
+    "SÛZİDİL — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/suzidil"
+   ]
+  ]
+ },
+ "Suzidilârâ": {
+  "ozet": "III. Selim'in buluşu, rast perdesinde karar eden makamdır; \"nigâr\" adıyla da anılır. Arel-Ezgi nazariyatında rast ve çârgâh dizilerinin birleşimi olarak tarif edilir.",
+  "dizi": "Rastta çârgâh dizisi: rast, dügâh, bûselik, çârgâh, nevâ, hüseynî, mâhur, gerdâniye. Yerinde çârgâh dizisi: çârgâh, nevâ, hüseynî, acem, gerdâniye, muhayyer, tiz bûselik, tiz çârgâh. Yerinde hicaz dörtlüsü: dügâh, dik-kürdî, nîm-hicaz, nevâ.",
+  "durak": "Rast (genellikle rasttaki çârgâh dizisiyle yedenli tam karar)",
+  "guclu": "Nevâ ve çârgâh",
+  "yeden": "Küçük mücennep diyezli fa (geveşt)",
+  "seyir": "Çıkıcı veya çıkıcı-inici",
+  "arizalar": "Donanıma işaret konmaz. Hüseynî, nevâ, yegâh, bûselik, dügâh, rast ve çârgâhta çeşitli asma kararlar yapılır; Batı müziğindeki komşu tonlara geçkiler yapılır. Madde yazarı Arel-Ezgi tarifini yetersiz bulur; Rauf Yektâ'nın \"rast, bûselik ve hüseynî karışımı\" tarifini eserlere en uygun tanım sayar.",
+  "tarihce": "Sultan III. Selim buluşudur (1789-1807 arası hüküm sürmüştür). TDV maddesi ilk geçtiği kaynağı ve adının kökenini yazmaz.",
+  "onemli": "III. Selim (Mevlevî âyini, ağır düyek peşrev, darbeyn ve hafif besteleri, ağır ve yürük semâi, ağır aksak şarkı), Tanbûrî Cemil Bey (saz semâisi), Nûman Ağa (düyek şarkı), Eyyûbî Zekâi Dede (düyek tevşîh).",
+  "kaynaklar": [
+   [
+    "SÛZİDİLÂRÂ — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/suzidilara"
+   ]
+  ]
+ },
+ "Sultaniyegâh": {
+  "ozet": "Hamâmîzâde İsmâil Dede Efendi'nin buluşu olarak geçen, yegâhta karar eden inici seyirli makamdır; bûselik makamı dizisinin yegâh perdesine göçürülmesiyle elde edilir.",
+  "dizi": "Yegâhtaki bûselik beşlisine dügâh perdesinden başlayan kürdî ve hicaz dörtlüleri eklenir; giriş seyrinde tizde hicaz dörtlüsü tercih edilir. Pestten tize: yegâh, hüseynî-aşiran, acem-aşiran, rast, dügâh, dik-kürdî veya kürdî, nîm-hicaz veya çârgâh, nevâ.",
+  "durak": "Yegâh (yedenli bûselik çeşnisiyle tam karar); tiz durak nevâ",
+  "guclu": "1. mertebe: nevâ; 2. mertebe: dügâh",
+  "yeden": "Porte altındaki bakiye diyezli do (kaba nîm-hicaz)",
+  "seyir": "İnici",
+  "arizalar": "Donanımda bakiye bemolü si ve bakiye diyezli do vardır. Nihâvend geçkisi (nîm-hisar), neveser geçkisi (nîm-hicaz do ve eviç fa), hüseynîde, nîm-hicazda ve dik-kürdîde küçük kalışlar yapılır. Acem-aşiran perdesindeki asma kalışta ısrar edilmemelidir, çünkü makam ferahfezâya benzeyebilir.",
+  "tarihce": "Hamâmîzâde İsmâil Dede Efendi'nin buluşu olarak geçer. TDV maddesi ilk geçtiği kaynağı, yüzyılı ve adının kökenini yazmaz.",
+  "onemli": "Nedim Ağa (çifte düyek peşrev, saz semâisi), Kanûnî Hacı Ârif Bey (muhammes peşrev, saz semâisi), Hamâmîzâde İsmâil Dede Efendi (zencir, hafif, ağır ve yürük semâilerden oluşan takım), Zeki Ârif Ataergin, Münir Nurettin Selçuk, Yesârî Âsım Arsoy (şarkılar), Ali Rıza Şengel (tevşîh), Şehzade Seyfeddin Efendi (cumhur ilâhisi).",
+  "kaynaklar": [
+   [
+    "SULTÂNÎYEGÂH — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/sultaniyegah"
+   ]
+  ]
+ },
+ "Pençgâh": {
+  "ozet": "Rast perdesinde karar eden birleşik makamdır; az kullanılmıştır. Adı Farsça \"beşinci yer\" anlamına gelir.",
+  "dizi": "İki türü vardır. Pençgâh-ı asıl, üç ayrı makamın karışık kullanımıdır: hüseynîde uşşaklı, nevâda bûselikli, segâhta segâh veya ferahnâklı, dügâhta uşşaklı asma kararlar; basit ısfahan ve bayâtî dizisi de yapıdadır. Pençgâh-ı zâid, birleşik ısfahan dizisi, rast perdesinde pençgâh beşlisi ve rast/acem rast dizilerinin karışımıdır. Pestten tize: rast, dügâh, segâh, çârgâh, nevâ, eviç veya acem, gerdâniye, muhayyer.",
+  "durak": "Rast (nevâda rast çeşnisiyle yarım karar)",
+  "guclu": "Ayrı belirtilmez; seyir nevâ civarından başlar",
+  "yeden": "",
+  "seyir": "İnici-çıkıcı",
+  "arizalar": "Ayrı bir arıza başlığı yoktur. Asma kararlar ve tizden gerekirse yapılabilecek genişletmeler (bayâtî, nevâ veya rast dizilerine göre) anlatılır. Pençgâh-ı zâid'de tam karar genellikle rast dizisiyle, bazen pençgâh beşlisiyle yapılır.",
+  "tarihce": "TDV maddesi ilk geçtiği kaynağı ve yüzyılı yazmaz; kaynakçada Seydî'nin el-Matla' eseri vardır. Her iki türün de az kullanıldığı belirtilir.",
+  "onemli": "Pençgâh Mevlevî Âyîn-i Şerifi (beste-i kadîm), Benli Hasan Ağa (devr-i kebîr), Behram Ağa (düyek peşrevler), Gulâm Şâdî (kâr), Mustafa Itrî (ağır çenber ve fer'), Abdülkādir-i Merâgī (ağır semâi), Acemler (yürük semâi).",
+  "kaynaklar": [
+   [
+    "PENÇGÂH — TDV İslâm Ansiklopedisi (Kürebilgi)",
+    "https://kureansiklopedi.com/tr/detay/pencgah-2"
+   ],
+   [
+    "PENÇGÂH — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/pencgah"
+   ]
+  ]
+ },
+ "Neveser": {
+  "ozet": "Hamâmîzâde İsmâil Dede Efendi'nin terkip ettiği, rastta nikriz beşlisi ile nevâda hicaz dörtlüsünden kurulu makamdır. Adı \"yeni eser\" anlamına gelir.",
+  "dizi": "Nihavend dizisine bakiye diyezli do (nîm-hicaz) perdesi eklenerek oluşur: rast üzerinde nikriz beşlisi, beşinci derece nevâ perdesinde hicaz dörtlüsü. Sekiz sesli dizidir; Batı müziğinde \"minör oryantal\"e karşılık gelir.",
+  "durak": "Rast (nikriz çeşnisiyle, genellikle yedenli tam karar)",
+  "guclu": "Nevâ (hicaz çeşnisiyle yarım karar)",
+  "yeden": "Irak (bakiye diyezli fa)",
+  "seyir": "İnici-çıkıcı, bazen çıkıcı",
+  "arizalar": "Donanım: si ve mi için bakiye bemolü, fa ve do için bakiye diyezi. Asma kararlar: nîm-hicaz ve dik-kürdîde çeşnisiz, dügâh ve yegâhta hicaz çeşnili, eviç ve hisarda çeşnisiz. Genişleme: pestte yegâhta şedaraban, tizde nevâda hümâyun dizisi.",
+  "tarihce": "Makamı Hamâmîzâde İsmâil Dede Efendi terkip etmiştir. TDV maddesi ilk geçtiği kaynağı ve yüzyılı yazmaz.",
+  "onemli": "Yûsuf Paşa (muhammes peşrev; aksak ve yürük semâi), Nûman Ağa (berefşan peşrev), Sâlih Dede Efendi (devr-i kebîr peşrev), Ali Rıza Tınaz (Avni) (aksak semâi), İsmâil Dede (yürük semâi, zencir murabba beste), Hacı Ârif Bey (curcuna şarkı), Rifat Bey ve Necdet Tanlak (Mevlevî âyini), Hüseyin Baba (nefes).",
+  "kaynaklar": [
+   [
+    "NEVESER — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/neveser"
+   ]
+  ]
+ },
+ "Müstear": {
+  "ozet": "Segâh makamının seyrine zaman zaman bir müstear dörtlüsü veya beşlisinin katılmasından oluşan birleşik makamdır; çıkıcı seyirlidir.",
+  "dizi": "Segâh dizisi: segâh beşlisi + eviçte hicaz dörtlüsü + nevâda uşşak-bayâtî dizisi. Müstear dörtlüsü TSK, müstear beşlisi TSKT, eksik müstear beşlisi TSKS aralıklarından oluşur ve 27 koma tutar.",
+  "durak": "Segâh (genellikle segâh çeşnisiyle, bazen müstear çeşnisiyle, yedenli tam karar)",
+  "guclu": "Nevâ (yarım karar)",
+  "yeden": "Kürdî (bakiye diyezli la), segâhtaki gibi",
+  "seyir": "Çıkıcı",
+  "arizalar": "Donanım segâh gibidir: si ve mi için koma bemolü, fa için bakiye diyezi. Seyre durak civarından segâh veya müstear çeşnisiyle başlanır; pestte dügâha uşşak, rasta rast çeşnisiyle inilerek genişler. Asma kararlar: nevâda bûselikli ve uşşaklı, dik-hisarda bazen uşşak, segâh veya ferahnâklı, rastta rastlı. Nîm-hicaz (bakiye diyezli do) geçkisi de anılır.",
+  "tarihce": "Sözlükte \"eğreti\" anlamına gelen müsteâr sözcüğü, adını taşıyan özel dörtlü/beşlinin (çeşni) zaman zaman makam seyrine katılmasından makama ad olmuştur. TDV maddesi ilk geçtiği kaynağı ve yüzyılı yazmaz.",
+  "onemli": "Tanbûrî Emin Ağa (hafif peşrev ve saz semâisi), Zekâi Dede (muhammes kâr), Abdülhalim Ağa (çenber ve hafif), Şâkir Ağa (aksak şarkı), Zekâizâde Ahmet Irsoy (Mevlevî âyini), Behlûl Efendi (durak), Sadettin Heper (düyek ilâhi).",
+  "kaynaklar": [
+   [
+    "MÜSTEAR — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/mustear"
+   ]
+  ]
+ },
+ "Ferahfeza": {
+  "ozet": "Vardakosta Ahmed Ağa'nın terkip ettiği, yegâhta karar eden, inici seyirli birleşik makamdır.",
+  "dizi": "İki biçimi vardır: (1) acem makamı dizisine acem-aşîrândan çârgâh dörtlüsü ve yegâhtan bûselik dizisi eklenir; (2) acem-aşîrân dizisi yerine yegâhtaki bûselik dizisi kullanılır ve acem-aşîrândaki çârgâh beşlisi tiz durak acem'e kopyalanır. İkinci biçim daha sık kullanılır.",
+  "durak": "Yegâh",
+  "guclu": "Tiz durak acem (çârgâh çeşnisiyle yarım karar)",
+  "yeden": "Kaba nîm-hicaz (bakiye diyezli do)",
+  "seyir": "İnici",
+  "arizalar": "Donanımda si küçük mücennep bemol vardır; diğer değişiklikler eser içinde gösterilir. Nevâda bûselik geçkisi (Batı müziğindeki ilgili minör ilişkisine benzetilir). Asma kararlar: nevâ (bûselik, hicaz), çârgâh (nikriz; yeden olarak bûselik), segâh (segâh veya ferahnâk), dügâh (uşşak, kürdî, hicaz). Çârgâhtaki acem-aşîrân kalışları Ferahfezâ'yı Sultaniyegâh'tan ayırır.",
+  "tarihce": "Makamı Vardakosta Ahmed Ağa terkip etmiştir. TDV maddesi ilk geçtiği kaynağı ve adının kökenini yazmaz.",
+  "onemli": "Zeki Mehmed Ağa ve Tanbûrî Cemil Bey (muhammes peşrevler), Hamâmîzâde İsmâil Dede Efendi (Mevlevî âyini, firengî fer'), Mehmet Râkım Elkutlu (semâi), Şehzade Seyfeddin Efendi (düyek ilâhi).",
+  "kaynaklar": [
+   [
+    "FERAHFEZÂ — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/ferahfeza"
+   ]
+  ]
+ },
+ "Evcârâ": {
+  "ozet": "III. Selim'in terkip ettiği, ırak perdesinde karar eden, inici seyirli makamdır; uzun süre şed makam sayılmış, tizdeki iki yabancı çeşni nedeniyle birleşik makam olarak değerlendirilmesi daha uygun görülmüştür.",
+  "dizi": "Zirgüleli hicaz dizisinin ırak perdesindeki inici şedde, eviç perdesindeki eksik segâh ve eksik müstear beşlilerinin eklenmesiyle oluşur. Çıkıcı nağmelerde eksik segâh beşlisi bazen eksik ferahnâk beşlisi biçiminde görülebilir.",
+  "durak": "Irak",
+  "guclu": "1. derece: tiz durak eviç; 2. derece: nîm-hicaz",
+  "yeden": "",
+  "seyir": "İnici (çıkıcı nağmeler de görülür)",
+  "arizalar": "Donanım: si koma bemol; fa, do, la ve mi bakiye diyez. Eviçte segâh veya müstear çeşnisiyle yarım karar; müstearlı kalış bazen asma karar olur; nîm-hicazda hicaz çeşnisiyle asma karar yapılır.",
+  "tarihce": "Makam III. Selim tarafından terkip edilmiştir (1789-1807). TDV maddesi ilk geçtiği kaynağı ve adının kökenini açıklamaz; kaynakçada Abdülbâki Nâsır Dede'nin Tedkîk u Tahkîk'i vardır.",
+  "onemli": "Dilhayat Kalfa (çifte düyek peşrev; aksak semâi usulünde saz semâisi), III. Selim (muhammes), Küçük Mehmed Ağa (hâvî), Hamâmîzâde İsmâil Dede Efendi (aksak semâi şarkı).",
+  "kaynaklar": [
+   [
+    "EVC-ÂRÂ — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/evc-ara"
+   ]
+  ]
+ },
+ "Neva": {
+  "ozet": "Dügâh üzerinde kurulu, Türk mûsikisinin kimin oluşturduğu bilinmeyen en eski makamlarından biri olarak anılan makamdır; lirik, dinî-tasavvufî bir karaktere sahiptir.",
+  "dizi": "Dügâh'ta bir uşşak dörtlüsüne nevâ perdesinde bir rast beşlisinin eklenmesiyle oluşur. Tizden genişleme: nevâ üzerindeki rast beşlisine muhayyerde bûselik dörtlüsü eklenerek acemli rast dizisi; ya da uşşak dörtlüsünün muhayyere simetrik aktarılması (muhayyerde asma kalış yapılamaz).",
+  "durak": "Dügâh (tam karar uşşak çeşnisiyle)",
+  "guclu": "Nevâ (yarım karar rast çeşnisiyle; nadiren bûselik)",
+  "yeden": "Rast (sol)",
+  "seyir": "Güçlü çevresinden başlar, güçlüde yarım karar, sonra inilerek dügâhta tam karar",
+  "arizalar": "Donanım: si için koma bemolü, fa için bakiye diyezi. Eviçte segâh çeşnili asma karar; nevâda bûselik çeşnili asma veya yarım karar da yapılabilir. Bûselik beşlisiyle karar verilirse nevâ-bûselik, kürdî dörtlüsüyle karar verilirse nevâ-kürdî olur. Nîm-hicaz (bakiye diyezli do) bazı durumlarda yeden olarak kullanılabilir, ancak bunun nevâda doğru olmadığı da belirtilir.",
+  "tarihce": "TDV maddesi makamı, kimin oluşturduğu bilinmeyen en eski makamlardan biri olarak tanımlar; ilk geçtiği kaynağı ve adının kökenini yazmaz.",
+  "onemli": "Solakzâde Mehmed Hemdemî (darb-ı fetih peşrev), Zeki Mehmed Ağa ve Tanbûrî Cemil Bey (devr-i kebîr peşrevler), II. Gazi Giray Han (aksak semâi), Itrî (nîm-sakîl), Hamâmîzâde İsmâil Dede (muhammes), Kadri Efendi (aksak semâi), Şerif İçli (yürük semâi), Tanbûrî Mustafa Çavuş (aksak şarkı), Zekâi Dede (şarkı, sofyan şuğul), Hâfız Post ve Muallim İsmâil Hakkı Bey (sofyan ilâhi).",
+  "kaynaklar": [
+   [
+    "NEVÂ — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/neva"
+   ]
+  ]
+ },
+ "Şehnaz": {
+  "ozet": "Dügâh perdesinde karar eden birleşik makamdır; Türk mûsikisinin eski ve çok sevilmiş makamlarından biri olarak tanımlanır; inici karakterlidir.",
+  "dizi": "Hüseynî üzerindeki hümâyun dizisine hicaz, uzzâl ve zirgüleli hicaz dizileri eklenerek oluşur (zirgüleli hicaz daha az kullanılır).",
+  "durak": "Dügâh (hicaz ailesinden dizi ve hicaz çeşnisiyle tam karar)",
+  "guclu": "1. mertebe: muhayyer (aynı zamanda tiz durak); 2. mertebe: hüseynî",
+  "yeden": "Nîm-şehnaz (bakiye diyezli sol); bazı eserlerde rastta sol",
+  "seyir": "İnici (muhayyer çevresinden başlar)",
+  "arizalar": "Donanımda hicaz ailesinin donanımı kullanılır: si bakiye bemol, do bakiye diyez; nîm-şehnaz donanıma yazılmaz. Yarım karar muhayyerde bûselik çeşnisiyle yapılır. Asma kararlar: hüseynî (hicazlı ve uşşaklı), nevâ (nikrizli, bûselikli, rastlı), hicaz ailesinin nîm-hicaz, dik-kürdî ve rast perdeleri. Seyir: hüseynîde hicazlı asma karar, sonra hicaz ailesine geçilip dügâhta tam karar; sonuna bûselik beşlisi eklenirse \"şehnaz bûselik\" olur.",
+  "tarihce": "Seydî ve Kantemiroğlu âvâzeler arasında, Abdülbâki Nâsır Dede terkipler arasında anmıştır. Terkip edeni belirtilmez; TDV maddesi adının kökenini yazmaz.",
+  "onemli": "Hamâmîzâde İsmâil Dede Efendi (zencir, aksak), Seyyid Nuh (çenber), Nazîm (sengin semâi), Kara İsmâil Ağa (yürük semâi), III. Selim (aksak), Tanbûrî Cemil Bey (sengin semâi, curcuna), Zeki Ârif Ataergin (curcuna), Nevres Paşa (sofyan divan), Hacı Fâik Bey ve Şehzade Seyfeddin Efendi (tevşih), Muallim İsmâil Hakkı Bey (devr-i hindî ilâhi).",
+  "kaynaklar": [
+   [
+    "ŞEHNAZ — TDV İslâm Ansiklopedisi",
+    "https://islamansiklopedisi.org.tr/sehnaz"
+   ]
+  ]
+ }
 };
-async function loadMakamInfo(){
-  try{
-    const r = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/makamlar.json?t=${Date.now()}`, {cache:'no-store'});
-    if(r.ok){ const j = await r.json(); if(j && typeof j === 'object') MAKAM_INFO = Object.assign({}, MAKAM_INFO, j); }
-  }catch(e){}
+const MAKAM_ALANLAR = [['ozet','Özet'],['dizi','Dizi ve perdeler'],['durak','Durak (karar)'],['guclu','Güçlü'],['yeden','Yeden'],['seyir','Seyir'],['arizalar','Donanım, arızalar ve geçkiler'],['tarihce','Tarihçe ve adının kökeni'],['onemli','Öne çıkan eserler, bestekârlar, yaygınlık'],['notlarim','Notlarım']];
+const MAKAM_KEY = 'makam_bilgi', MAKAM_FILE = 'makamlar.json';
+let makamUser = {};   // {ad: {alanlar..., kaynaklar, updatedAt, silindi?}}
+function loadMakamLocal(){ try{ makamUser = JSON.parse(localStorage.getItem(MAKAM_KEY) || '{}') || {}; }catch(e){ makamUser = {}; } }
+function makamKeyOf(name){
+  const n = usulNorm(name);
+  return Object.keys(MAKAM_DEFAULT).concat(Object.keys(makamUser)).find(k => usulNorm(k) === n) || name;
 }
-function openMakamInfo(name){
-  const info = MAKAM_INFO[name];
+function getMakamInfo(name){
+  const k = makamKeyOf(name), u = makamUser[k];
+  if(u && !u.silindi) return Object.assign({}, u, {_duzenlendi:true});
+  return MAKAM_DEFAULT[k] || null;
+}
+async function fetchMakamRemote(){
+  const r = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${MAKAM_FILE}?t=${Date.now()}`, {cache:'no-store'});
+  if(!r.ok) return {};
+  const j = await r.json(); return (j && typeof j === 'object' && !Array.isArray(j)) ? j : {};
+}
+function mergeMakam(a, b){
+  const m = Object.assign({}, a);
+  Object.keys(b).forEach(k => { if(!m[k] || (b[k].updatedAt||0) > (m[k].updatedAt||0)) m[k] = b[k]; });
+  return m;
+}
+async function loadMakamInfo(){
+  loadMakamLocal();
+  try{ makamUser = mergeMakam(makamUser, await fetchMakamRemote()); localStorage.setItem(MAKAM_KEY, JSON.stringify(makamUser)); }catch(e){}
+}
+async function pushMakam(){
+  localStorage.setItem(MAKAM_KEY, JSON.stringify(makamUser));
+  const token = getToken(); if(!token) return {ok:false, reason:'token yok'};
+  try{ makamUser = mergeMakam(makamUser, await fetchMakamRemote()); localStorage.setItem(MAKAM_KEY, JSON.stringify(makamUser)); }catch(e){}
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(makamUser, null, 1))));
+  return pushFileToGithub(token, MAKAM_FILE, b64, 'Makam bilgileri güncellendi');
+}
+function mkSections(info){
+  let h = '';
+  MAKAM_ALANLAR.forEach(([k, b]) => { if(k !== 'ozet' && info[k] && String(info[k]).trim()) h += `<div class="mk-sec"><h4>${escapeHtml(b)}</h4><p style="white-space:pre-line;">${escapeHtml(info[k])}</p></div>`; });
+  return h;
+}
+function mkEksik(info){
+  const bos = MAKAM_ALANLAR.filter(([k]) => k !== 'notlarim' && !(info[k] && String(info[k]).trim())).map(([,b]) => b);
+  return bos.length ? `<p class="mk-gap">Henüz doğrulanmadı / doldurulmadı: ${bos.map(escapeHtml).join(' · ')}</p>` : '';
+}
+function mkChips(info){
+  const c = [['Durak', info.durak], ['Güçlü', info.guclu], ['Yeden', info.yeden], ['Seyir', info.seyir]].filter(x => x[1] && String(x[1]).trim());
+  return c.length ? `<div class="mk-chips ui">${c.map(([a, v]) => `<div><span>${a}</span>${escapeHtml(v)}</div>`).join('')}</div>` : '';
+}
+function makamPanelHtml(name){
+  const info = getMakamInfo(name);
+  if(!info) return `<div class="mk-panel ui"><p style="margin:0 0 .5rem;font-size:.85rem;color:var(--ink-faint);">${escapeHtml(name)} için tanıtım henüz yok.</p><button type="button" class="btn-ghost mk-btn-open" data-makam="${escapeAttr(name)}">+ Tanıtım ekle</button></div>`;
+  return `<div class="mk-panel">
+    <p style="margin:0 0 .6rem; font-size:.98rem; line-height:1.5; color:var(--ink);">${escapeHtml(info.ozet || '')}</p>
+    ${mkChips(info)}
+    <div class="ui" style="margin-top:.7rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+      <button type="button" class="btn-ghost mk-btn-open" data-makam="${escapeAttr(name)}">Tamamını oku</button>
+      <button type="button" class="btn-ghost mk-btn-edit" data-makam="${escapeAttr(name)}">Düzenle</button>
+    </div>
+  </div>`;
+}
+function openMakamInfo(name, editMode){
+  const info = getMakamInfo(name) || {};
   const box = document.getElementById('makamContent');
-  let h = `<p style="font-size:1.5rem; font-weight:500; margin:0 0 .3rem; color:var(--ink);">${escapeHtml(name)}</p>`;
-  if(!info){
-    h += `<p class="mk-gap" style="margin-top:.6rem;">Bu makam için tanıtım henüz hazırlanmadı.</p>`;
-  } else {
-    h += `<p class="ui" style="font-size:.9rem; color:var(--gold-bright); margin:0 0 1rem; line-height:1.5;">${escapeHtml(info.ozet || '')}</p>`;
-    (info.bolumler || []).forEach(x => { h += `<div class="mk-sec"><h4>${escapeHtml(x.b)}</h4><p>${escapeHtml(x.m)}</p></div>`; });
-    if(info.eksik && info.eksik.length) h += `<p class="mk-gap">Henüz doğrulanmadı: ${info.eksik.map(escapeHtml).join(' · ')}</p>`;
-    if(info.kaynaklar && info.kaynaklar.length) h += `<div class="mk-sec" style="margin-top:.9rem;"><h4>Kaynaklar</h4>${info.kaynaklar.map(([t,u]) => `<p class="ui" style="font-size:.8rem;"><a href="${escapeAttr(u)}" target="_blank" rel="noopener" style="color:var(--teal);">${escapeHtml(t)}</a></p>`).join('')}</div>`;
+  if(editMode){ box.innerHTML = makamFormHtml(name, info); bindMakamForm(name); }
+  else {
+    let h = `<p style="font-size:1.5rem; font-weight:500; margin:0 0 .3rem; color:var(--ink);">${escapeHtml(name)}</p>`;
+    if(!getMakamInfo(name)) h += `<p class="mk-gap" style="margin-top:.6rem;">Bu makam için tanıtım henüz hazırlanmadı.</p>`;
+    else {
+      h += `<p class="ui" style="font-size:.92rem; color:var(--gold-bright); margin:0 0 .9rem; line-height:1.5;">${escapeHtml(info.ozet || '')}</p>`;
+      h += mkChips(info) + '<div style="height:.8rem"></div>' + mkSections(info) + mkEksik(info);
+      const ks = (info.kaynaklar || []).filter(x => x && x[0]);
+      if(ks.length) h += `<div class="mk-sec" style="margin-top:.9rem;"><h4>Kaynaklar</h4>${ks.map(([t,u]) => u ? `<p class="ui" style="font-size:.8rem;"><a href="${escapeAttr(u)}" target="_blank" rel="noopener" style="color:var(--teal);">${escapeHtml(t)}</a></p>` : `<p class="ui" style="font-size:.8rem;">${escapeHtml(t)}</p>`).join('')}</div>`;
+      if(info._duzenlendi) h += `<p class="ui" style="font-size:.72rem;color:var(--ink-faint);">Bu sayfa senin düzenlemelerini gösteriyor.</p>`;
+    }
+    h += `<div class="ui" style="margin-top:.8rem;"><button type="button" class="btn-ghost" id="mkEditBtn">Düzenle</button></div>`;
+    box.innerHTML = h;
+    document.getElementById('mkEditBtn').addEventListener('click', () => openMakamInfo(name, true));
   }
-  box.innerHTML = h;
   document.getElementById('makamOverlay').style.display = 'flex';
 }
+function makamFormHtml(name, info){
+  const ta = 'display:block;width:100%;margin-top:.25rem;background:var(--panel);color:var(--ink);border:0.5px solid var(--border-strong);border-radius:6px;padding:.5rem .6rem;font-family:Inter,sans-serif;font-size:.85rem;line-height:1.45;';
+  const ks = (info.kaynaklar || []).map(([t,u]) => t + (u ? ' | ' + u : '')).join('\n');
+  return `<p style="font-size:1.3rem; margin:0 0 .8rem; color:var(--ink);">${escapeHtml(name)} — düzenle</p>
+    <form id="mkForm" class="ui" style="display:grid; gap:.7rem;">
+      ${MAKAM_ALANLAR.map(([k,b]) => `<label style="font-size:.75rem;color:var(--ink-faint);">${escapeHtml(b)}<textarea data-k="${k}" rows="${['ozet','dizi','arizalar','tarihce','onemli','notlarim'].includes(k) ? 4 : 2}" style="${ta}">${escapeHtml(info[k] || '')}</textarea></label>`).join('')}
+      <label style="font-size:.75rem;color:var(--ink-faint);">Kaynaklar (her satır: Başlık | https://link)<textarea data-k="kaynaklar" rows="3" style="${ta}">${escapeHtml(ks)}</textarea></label>
+      <p id="mkStatus" style="font-size:.78rem;color:var(--ink-dim);margin:0;"></p>
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button type="submit" class="btn-primary">Kaydet</button>
+        <button type="button" class="btn-ghost" id="mkCancel">Vazgeç</button>
+        ${MAKAM_DEFAULT[makamKeyOf(name)] && makamUser[makamKeyOf(name)] && !makamUser[makamKeyOf(name)].silindi ? '<button type="button" class="btn-ghost" id="mkReset">Hazır metne dön</button>' : ''}
+      </div>
+    </form>`;
+}
+function bindMakamForm(name){
+  const form = document.getElementById('mkForm'), st = document.getElementById('mkStatus');
+  document.getElementById('mkCancel').addEventListener('click', () => openMakamInfo(name, false));
+  const rs = document.getElementById('mkReset');
+  if(rs) rs.addEventListener('click', async () => {
+    if(!confirm('Senin düzenlemelerin silinsin, hazır metne dönülsün mü?')) return;
+    const k = makamKeyOf(name); makamUser[k] = {silindi:true, updatedAt:Date.now()};
+    await pushMakam(); openMakamInfo(name, false); render();
+  });
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const obj = {updatedAt: Date.now()};
+    form.querySelectorAll('textarea').forEach(t => {
+      const k = t.getAttribute('data-k');
+      if(k === 'kaynaklar') obj.kaynaklar = t.value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const i = l.indexOf('|'); return i < 0 ? [l, ''] : [l.slice(0,i).trim(), l.slice(i+1).trim()]; });
+      else obj[k] = t.value.trim();
+    });
+    makamUser[makamKeyOf(name)] = obj;
+    st.textContent = 'Kaydediliyor…';
+    const r = await pushMakam();
+    showToast(r.ok ? 'Kaydedildi ✓' : 'Bu cihazda kaydedildi' + (r.reason === 'token yok' ? ' (bu cihazda token yok, GitHub\'a gitmedi)' : ' (GitHub: ' + r.reason + ')'));
+    openMakamInfo(name, false); render();
+  });
+}
 document.addEventListener('click', e => {
-  const b = e.target.closest && e.target.closest('.mk-btn'); if(!b) return;
-  e.stopPropagation(); openMakamInfo(b.getAttribute('data-makam'));
+  const b = e.target.closest && e.target.closest('.mk-btn, .mk-btn-open, .mk-btn-edit'); if(!b) return;
+  e.stopPropagation();
+  openMakamInfo(b.getAttribute('data-makam'), b.classList.contains('mk-btn-edit'));
 });
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('closeMakamBtn').addEventListener('click', () => { document.getElementById('makamOverlay').style.display = 'none'; });
@@ -2206,15 +2689,18 @@ function usulSvg(u, vv){
   });
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${Math.round(Math.min(W, total>12?W*0.7:320))}px;max-width:${Math.round(W*1.6)}px;height:auto;display:block;" role="img" aria-label="${escapeAttr(u.ad)} usûl vuruş şeması">${out}</svg>`;
 }
-function usulPlayerHtml(u, etiket, key, startVel){
+function usulPlayerHtml(u, etiket, key, startVel, alwaysTabs){
   const baslik = (etiket ? escapeHtml(etiket) + ' — ' : '') + escapeHtml(u.ad);
   const not = u.tek ? ' · hocanla doğrula' : '';
   const useVel = !!(startVel && u.vel);
   const cur = useVel ? u.vel : u.v;
   const zam = Math.round(cur.reduce((a,x) => a + x[1], 0) * 10) / 10;
-  return `<div class="usul-box" data-usul="${key}" data-vel="${useVel ? 1 : 0}">
-    <p class="ui usul-title">${baslik} <span class="us-zaman" style="color:var(--ink-faint);">· ${zam} zaman${not}</span></p>
-    ${u.vel ? `<div class="ui us-var" style="margin-bottom:.5rem;"><button type="button" class="btn-ghost us-v0" style="${useVel?'':'border-color:var(--gold);color:var(--gold-bright);'}">Normal</button> <button type="button" class="btn-ghost us-v1" style="${useVel?'border-color:var(--gold);color:var(--gold-bright);':''}">Velveleli</button></div>` : ''}
+  const tabs = (u.vel || alwaysTabs) ? `<div class="ui us-var"><button type="button" class="btn-ghost us-v0" style="${useVel?'':'border-color:var(--gold);color:var(--gold-bright);'}">Normal</button> <button type="button" class="btn-ghost us-v1" style="${useVel?'border-color:var(--gold);color:var(--gold-bright);':''}">Velveleli</button></div>` : '';
+  return `<div class="usul-box" data-usul="${key}" data-vel="${useVel ? 1 : 0}" data-ad="${escapeAttr(u.ad)}">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; flex-wrap:wrap; margin-bottom:.5rem;">
+      <p class="ui usul-title" style="margin:0;">${baslik} <span class="us-zaman" style="color:var(--ink-faint);">· ${zam} zaman${not}</span></p>
+      ${tabs}
+    </div>
     <div class="usul-scroll us-svgwrap">${usulSvg(u, cur)}</div>
     <div class="usul-ctl ui">
       <button type="button" class="btn-ghost us-play">▶ Çal</button>
@@ -2248,7 +2734,7 @@ function noteFreq(name){
   const midi = (Number(m[2]) + 1) * 12 + NOTE_NAMES.indexOf(m[1]);
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
-const SES_DEF = {D:'A2', T:'E4'};
+const SES_DEF = {D:'A2', T:'E4', tip:'bendir'};
 let usulSes = Object.assign({}, SES_DEF);
 function loadSes(){ try{ const j = JSON.parse(localStorage.getItem('usul_ses') || 'null'); if(j) usulSes = Object.assign({}, SES_DEF, j); }catch(e){} }
 function saveSes(){ try{ localStorage.setItem('usul_ses', JSON.stringify(usulSes)); }catch(e){} }
@@ -2269,7 +2755,76 @@ function usulUnlockAudio(){
     if(usulAudioEl.paused){ const p = usulAudioEl.play(); if(p && p.catch) p.catch(() => {}); }
   }catch(e){}
 }
+// --- Bendir sesi (sentez) ve kullanıcının kendi örnekleri ---
+let usulNoise = null;
+const usulSamples = {D:null, T:null};   // çözülmüş AudioBuffer'lar
+function usulGetCtx(){
+  usulCtx = usulCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if(usulCtx.state === 'suspended') usulCtx.resume();
+  return usulCtx;
+}
+function usulNoiseBuf(c){
+  if(!usulNoise){
+    usulNoise = c.createBuffer(1, Math.floor(c.sampleRate * 0.5), c.sampleRate);
+    const d = usulNoise.getChannelData(0); for(let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return usulNoise;
+}
+function usulNoiseBurst(c, t, dur, type, freq, q, vol){
+  const src = c.createBufferSource(); src.buffer = usulNoiseBuf(c);
+  const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = c.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  src.connect(f); f.connect(g); g.connect(c.destination); src.start(t, Math.random() * 0.2); src.stop(t + dur + 0.02);
+}
+function usulTone(c, t, type, f0, f1, dur, vol){
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); if(f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + Math.min(dur, 0.09));
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function usulBeepBendir(tip){
+  const c = usulGetCtx(), t = c.currentTime + 0.005, f = noteFreq(usulSes[tip === 'D' ? 'D' : 'T']);
+  if(tip === 'D'){
+    // Düm: derin deri gövdesi; vuruşta perde hızla düşer. Üst katmanlar telefon hoparlöründe de duyulmasını sağlar.
+    usulTone(c, t, 'sine', f * 1.7, f, 0.42, 1.0);
+    usulTone(c, t, 'sine', f * 2.6, f * 1.9, 0.18, 0.45);
+    usulTone(c, t, 'triangle', f * 4.1, f * 3.2, 0.09, 0.22);
+    usulNoiseBurst(c, t, 0.05, 'lowpass', 1800, 0.7, 0.55);      // elin deriye çarpması
+  } else {
+    // Tek: kenara/deri ucuna tiz vuruş + kısa tını + bendirin zilleri
+    usulTone(c, t, 'triangle', f * 1.4, f, 0.07, 0.35);
+    usulNoiseBurst(c, t, 0.07, 'bandpass', 3200, 1.1, 0.95);
+    usulNoiseBurst(c, t + 0.004, 0.22, 'highpass', 6500, 0.7, 0.18); // zil
+  }
+}
+function usulBeepSample(tip){
+  const c = usulGetCtx(), b = usulSamples[tip === 'D' ? 'D' : 'T'];
+  if(!b) return false;
+  const src = c.createBufferSource(); src.buffer = b; src.connect(c.destination); src.start(c.currentTime + 0.005);
+  return true;
+}
 function usulBeep(tip){
+  try{
+    usulUnlockAudio();
+    const mode = usulSes.tip || 'bendir';
+    if(mode === 'ornek' && usulBeepSample(tip)) return;
+    if(mode === 'elektronik') return usulBeepElektronik(tip);
+    return usulBeepBendir(tip);
+  }catch(e){}
+}
+async function usulLoadSamples(){
+  for(const k of ['D', 'T']){
+    try{
+      const rec = await getLocalPdf('ses_' + k);
+      if(rec && rec.blob){
+        const c = usulGetCtx();
+        usulSamples[k] = await c.decodeAudioData(await rec.blob.arrayBuffer());
+      } else usulSamples[k] = null;
+    }catch(e){ usulSamples[k] = null; }
+  }
+  const st = document.getElementById('ss-ornek'); if(st) st.textContent = 'Düm: ' + (usulSamples.D ? 'yüklü ✓' : 'yok') + ' · Tek: ' + (usulSamples.T ? 'yüklü ✓' : 'yok');
+}
+function usulBeepElektronik(tip){
   try{
     usulUnlockAudio();
     usulCtx = usulCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -2299,9 +2854,16 @@ function mountUsulBoxes(root, resolve){
     const setVar = (isVel) => {
       usulStop();
       box.setAttribute('data-vel', isVel ? '1' : '0');
-      box.querySelector('.us-svgwrap').innerHTML = usulSvg(u, pat());
-      const z = Math.round(pat().reduce((a,x) => a + x[1], 0) * 10) / 10;
-      box.querySelector('.us-zaman').textContent = '· ' + z + ' zaman' + (u.tek ? ' · hocanla doğrula' : '');
+      const missing = isVel && !u.vel;
+      box.querySelector('.usul-ctl').style.display = missing ? 'none' : '';
+      if(missing){
+        box.querySelector('.us-svgwrap').innerHTML = `<div class="ui" style="padding:.9rem .2rem;"><p style="margin:0 0 .6rem;font-size:.82rem;color:var(--ink-faint);">Velveleli kalıp henüz eklenmedi.</p><button type="button" class="btn-ghost us-addvel" data-ad="${escapeAttr(u.ad)}">+ Velveleli ekle</button></div>`;
+        box.querySelector('.us-zaman').textContent = '';
+      } else {
+        box.querySelector('.us-svgwrap').innerHTML = usulSvg(u, pat());
+        const z = Math.round(pat().reduce((a,x) => a + x[1], 0) * 10) / 10;
+        box.querySelector('.us-zaman').textContent = '· ' + z + ' zaman' + (u.tek ? ' · hocanla doğrula' : '');
+      }
       const b0 = box.querySelector('.us-v0'), b1 = box.querySelector('.us-v1');
       if(b0 && b1){
         b0.style.cssText = isVel ? '' : 'border-color:var(--gold);color:var(--gold-bright);';
@@ -2376,13 +2938,8 @@ function renderUsulView(){
   const q = usulNorm(document.getElementById('search').value);
   const all = tumUsuller().filter(u => !q || usulNorm(u.ad).includes(q)).sort((a,b) => a.zaman - b.zaman || trSort(a.ad, b.ad));
   const wrap = document.getElementById('usulList2');
-  const noVel = u => Object.assign({}, u, {vel:null});
-  const velAs = u => Object.assign({}, u, {v:u.vel, vel:null, tek:u.velOverride || u.ozel ? false : u.tek, not:''});
   wrap.innerHTML = all.length ? all.map((u, i) => `<div class="usul-item" data-i="${i}" style="margin-bottom:1.1rem;">
-      <p style="font-size:1.25rem; font-weight:500; margin:0 0 .35rem; color:var(--ink);">${escapeHtml(u.ad)}</p>
-      ${usulPlayerHtml(noVel(u), 'Normal', 'l'+i+'n', false)}
-      ${u.vel ? usulPlayerHtml(velAs(u), 'Velveleli', 'l'+i+'v', false)
-        : `<div class="usul-box" style="border-style:dashed;"><p class="ui usul-title" style="margin:0;">Velveleli — henüz eklenmedi</p></div>`}
+      ${usulPlayerHtml(u, '', 'l'+i, false, true)}
       <div style="text-align:right;margin-top:.3rem;">
         ${u.ozel ? `<span class="ui" style="font-size:.72rem;color:var(--ink-faint);">Kalıp: ${escapeHtml(u.kalip||'')}</span> ` : ''}
         <button type="button" class="btn-ghost us-addvel" data-ad="${escapeAttr(u.ad)}">${u.vel ? 'Velveleliyi düzenle' : '+ Velveleli ekle'}</button>
@@ -2391,29 +2948,30 @@ function renderUsulView(){
       </div>
     </div>`).join('') : '<div class="empty">Bu aramaya uyan usûl yok.</div>';
   usulStop();
-  mountUsulBoxes(wrap, b => { const m = String(b.getAttribute('data-usul')).match(/^l(\d+)([nv])$/); if(!m) return null; const u = all[Number(m[1])]; return m[2] === 'v' ? velAs(u) : noVel(u); });
-  wrap.querySelectorAll('.us-addvel').forEach(btn => btn.addEventListener('click', () => {
-    const u = all.find(x => x.ad === btn.getAttribute('data-ad')); if(!u) return;
-    document.getElementById('ub-ad').value = u.ad;
-    document.getElementById('ub-kalip').value = vToText(u.v);
-    document.getElementById('ub-vel').value = u.vel ? vToText(u.vel) : '';
-    ug.target = 1; ugFromText(document.getElementById('ub-vel').value); ugSyncControls(); ugRender(); usulBuilderPreview();
-    document.getElementById('ub-status').textContent = u.ad + ' için velveleli kalıbı giriyorsun. Normal kalıp değişmez; ızgara velveleliyi düzenliyor.';
-    const adEl = document.getElementById('ub-ad'); if(adEl.scrollIntoView) adEl.scrollIntoView({behavior:'smooth', block:'center'});
-  }));
-  const remove = (selector, whole) => wrap.querySelectorAll(selector).forEach(btn => btn.addEventListener('click', async () => {
-    const ad = btn.getAttribute('data-ad');
+  mountUsulBoxes(wrap, b => all[Number(String(b.getAttribute('data-usul')).slice(1))]);
+  // Tıklamalar tek bir dinleyiciyle (kutu içinden sonradan eklenen düğmeler de çalışsın)
+  wrap.onclick = async (e) => {
+    const add = e.target.closest('.us-addvel');
+    if(add){
+      const u = all.find(x => x.ad === add.getAttribute('data-ad')); if(!u) return;
+      document.getElementById('ub-ad').value = u.ad;
+      document.getElementById('ub-kalip').value = vToText(u.v);
+      document.getElementById('ub-vel').value = u.vel ? vToText(u.vel) : '';
+      ug.target = 1; ugFromText(document.getElementById('ub-vel').value); ugSyncControls(); ugRender(); usulBuilderPreview();
+      document.getElementById('ub-status').textContent = u.ad + ' için velveleli kalıbı giriyorsun. Normal kalıp değişmez; ızgara velveleliyi düzenliyor.';
+      const adEl = document.getElementById('ub-ad'); if(adEl.scrollIntoView) adEl.scrollIntoView({behavior:'smooth', block:'center'});
+      return;
+    }
+    const del = e.target.closest('.us-del'), dv = e.target.closest('.us-delvel');
+    const btn = del || dv; if(!btn) return;
+    const ad = btn.getAttribute('data-ad'), whole = !!del;
     if(!confirm((whole ? ad + ' usûlü' : ad + ' velveleli kalıbı') + ' silinsin mi?')) return;
     const o = ozelUsuller.find(x => usulNorm(x.ad) === usulNorm(ad));
-    if(o){
-      if(whole || o.velFor) o.silindi = true; else o.velKalip = '';
-      o.updatedAt = Date.now();
-    }
+    if(o){ if(whole || o.velFor) o.silindi = true; else o.velKalip = ''; o.updatedAt = Date.now(); }
     const r = await pushOzel();
     showToast(r.ok ? 'Silindi' : 'Bu cihazda silindi' + (r.reason ? ' (GitHub: ' + r.reason + ')' : ''));
     renderUsulView(); renderMakamDatalist();
-  }));
-  remove('.us-del', true); remove('.us-delvel', false);
+  };
 }
 function usulBuilderPreview(){
   const kalip = document.getElementById('ub-kalip').value, out = document.getElementById('ub-prev');
@@ -2536,8 +3094,22 @@ function ugInit(){
     sel.addEventListener('change', () => { usulSes[r] = sel.value; saveSes(); usulBeep(r); });
     document.getElementById('ss-p' + r).addEventListener('click', () => usulBeep(r));
   });
+  const tipSel = document.getElementById('ss-tip');
+  tipSel.value = usulSes.tip || 'bendir';
+  tipSel.addEventListener('change', () => { usulSes.tip = tipSel.value; saveSes(); usulBeep('D'); setTimeout(() => usulBeep('T'), 220); });
+  ['D', 'T'].forEach(k => document.getElementById('ss-f' + k).addEventListener('change', async e => {
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    try{ await saveLocalPdf('ses_' + k, f, f.name); await usulLoadSamples(); usulSes.tip = 'ornek'; saveSes(); tipSel.value = 'ornek'; usulBeepSample(k); }
+    catch(err){ document.getElementById('ss-ornek').textContent = 'Yüklenemedi: ' + err.message; }
+  }));
+  document.getElementById('ss-fdel').addEventListener('click', async () => {
+    try{ await deleteLocalPdf('ses_D'); await deleteLocalPdf('ses_T'); }catch(e){}
+    usulSamples.D = usulSamples.T = null; if(usulSes.tip === 'ornek'){ usulSes.tip = 'bendir'; saveSes(); tipSel.value = 'bendir'; }
+    await usulLoadSamples();
+  });
+  usulLoadSamples();
   document.getElementById('ss-reset').addEventListener('click', () => {
-    usulSes = Object.assign({}, SES_DEF); saveSes();
+    usulSes = Object.assign({}, SES_DEF); saveSes(); tipSel.value = 'bendir';
     ['D', 'T'].forEach(r => { document.getElementById('ss-' + r).value = usulSes[r]; });
   });
 }
@@ -2582,7 +3154,7 @@ document.addEventListener('DOMContentLoaded', () => {
 loadOzelLocal();
 loadData();
 initJournal();
-loadMakamInfo();
+loadMakamInfo().then(() => { if(currentView === 'rep') render(); });
 syncOzel().then(() => { renderMakamDatalist(); if(currentView === 'usul') renderUsulView(); });
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
