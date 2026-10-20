@@ -253,6 +253,7 @@
     <div class="tabs ui" id="viewTabs">
       <button type="button" class="tab active" data-view="rep">Repertuar</button>
       <button type="button" class="tab" data-view="gunluk">Günlük</button>
+      <button type="button" class="tab" data-view="usul">Usûller</button>
     </div>
   </header>
 
@@ -275,6 +276,22 @@
     <nav class="sidebar ui" id="sidebar"></nav>
     <main class="content" id="content"></main>
   </div>
+
+  <section id="usulView" style="display:none; max-width:900px; margin:0 auto; padding:0 1rem 2rem;">
+    <div class="usul-box" style="margin-top:1rem;">
+      <p class="ui usul-title">Kendi usûlünü ekle</p>
+      <div class="ui" style="display:grid; gap:.5rem;">
+        <input id="ub-ad" type="text" placeholder="Usûl adı (örn. Mevlevi Devr-i Revan)" style="background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:.55rem .7rem;">
+        <input id="ub-kalip" type="text" placeholder="Kalıp: Düm2 Tek1 Tek1 Düm2 Tek2   ya da   Yürük Semai + Sofyan + Sofyan" style="background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:.55rem .7rem;">
+        <p style="font-size:.74rem;color:var(--ink-faint);margin:0;">Düm = D, Tek = T, sayı kaç zaman sürdüğünü gösterir (D2 = 2 zaman düm). Hazır usûl adlarını + ile birleştirebilirsin.</p>
+        <input id="ub-vel" type="text" placeholder="İstersen velveleli kalıp (boş bırakabilirsin): D2 D2 T2 D1 T1 T.5 T.5 ..." style="background:var(--panel); color:var(--ink); border:0.5px solid var(--border-strong); border-radius:6px; padding:.55rem .7rem;">
+        <p style="font-size:.74rem;color:var(--ink-faint);margin:0;">Yarım zaman için T.5, bir buçuk için T1.5 yazabilirsin.</p>
+        <div id="ub-prev" class="usul-scroll"></div>
+        <div style="display:flex; gap:.6rem; align-items:center;"><button type="button" class="btn-primary" id="ub-save">Kaydet</button><span id="ub-status" style="font-size:.78rem;color:var(--ink-dim);"></span></div>
+      </div>
+    </div>
+    <div id="usulList2" style="margin-top:1rem; display:grid; gap:.4rem;"></div>
+  </section>
 
   <section id="journalView" style="display:none;">
     <div class="j-composer">
@@ -338,7 +355,7 @@
         <datalist id="turList"></datalist>
       </label>
       <label>Usûl (düm-tek şeması için)
-        <input id="f-usul" list="usulList" type="text" placeholder="Örn. Aksak, Curcuna, Sofyan  —  ya da özel: Düm2 Tek1 Tek1">
+        <input id="f-usul" list="usulList" type="text" placeholder="Örn. Aksak   —   birden fazlaysa ; ile: 1. Selam: Devr-i Revan; 2. Selam: Evfer">
         <datalist id="usulList"></datalist>
       </label>
       <label>Makam
@@ -704,7 +721,7 @@ function cardHtml(item){
     : '';
   return `<div class="card" data-id="${item.id}">
       ${item.tur ? `<span class="badge">${escapeHtml(item.tur)}</span>` : ''}
-      <p class="eser-name">${escapeHtml(displayTitle(item))}${item.usul ? `<span class="usul-chip ui">${escapeHtml(item.usul.length>18?item.usul.slice(0,18)+'…':item.usul)}</span>` : ''}</p>
+      <p class="eser-name">${escapeHtml(displayTitle(item))}${item.usul ? `<span class="usul-chip ui">${escapeHtml(usulChipText(item.usul))}</span>` : ''}</p>
       ${item.bestekar ? `<p class="bestekar">${escapeHtml(item.bestekar)}</p>` : ''}
       ${item.ogreten ? `<p class="bestekar" style="color:var(--gold-dim);">Öğreten: ${escapeHtml(item.ogreten)}</p>` : ''}
       ${notlarRow}
@@ -1161,7 +1178,7 @@ function renderMakamDatalist(){
   };
   fill('makamList', getMakamlar());
   fill('turList', uniqueSorted('tur'));
-  fill('usulList', Array.from(new Set(USULLER.map(u=>u.ad).concat(uniqueSorted('usul')))));
+  fill('usulList', usulNamesForList());
   fill('bestekarList', uniqueSorted('bestekar'));
   fill('ogretenList', uniqueSorted('ogreten'));
 }
@@ -1297,7 +1314,7 @@ document.getElementById('eserForm').addEventListener('submit', async (e) => {
 
 document.getElementById('search').addEventListener('input', (e) => {
   searchText = e.target.value;
-  if(currentView === 'gunluk') renderJournal(); else renderContent();
+  if(currentView === 'gunluk') renderJournal(); else if(currentView === 'usul') renderUsulView(); else renderContent();
 });
 
 document.getElementById('sortSelect').addEventListener('change', (e) => {
@@ -1949,13 +1966,15 @@ jEl('j-cancel').addEventListener('click', resetJournalComposer);
 // --- Görünüm geçişi (Repertuar / Günlük) ---
 function setView(view){
   currentView = view;
-  const isJ = view === 'gunluk';
+  const isJ = view === 'gunluk', isU = view === 'usul';
+  usulStop();
   document.querySelectorAll('#viewTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
-  document.querySelector('.layout').style.display = isJ ? 'none' : '';
+  document.querySelector('.layout').style.display = (isJ || isU) ? 'none' : '';
   jEl('journalView').style.display = isJ ? '' : 'none';
-  ['sortSelect', 'surpriseBtn', 'addBtn', 'syncBadge'].forEach(id => { jEl(id).style.display = isJ ? 'none' : ''; });
-  jEl('search').placeholder = isJ ? 'Günlükte ara…' : 'Eser, bestekâr veya makam ara...';
-  if(isJ) renderJournal(); else render();
+  jEl('usulView').style.display = isU ? '' : 'none';
+  ['sortSelect', 'surpriseBtn', 'addBtn', 'syncBadge'].forEach(id => { jEl(id).style.display = (isJ || isU) ? 'none' : ''; });
+  jEl('search').placeholder = isJ ? 'Günlükte ara…' : isU ? 'Usûl ara…' : 'Eser, bestekâr veya makam ara...';
+  if(isJ) renderJournal(); else if(isU) renderUsulView(); else render();
 }
 document.querySelectorAll('#viewTabs .tab').forEach(t => {
   t.addEventListener('click', () => setView(t.dataset.view));
@@ -1987,10 +2006,10 @@ function journalSnippetHtml(eserId){
 </script>
 
 <script>
-// --- Usûl görseli ---
+// --- Usûl görseli, çoklu usûl, Usûller sekmesi, özel usûl ---
 // Vuruş kalıpları (D = düm/kuvvetli, T = tek/hafif; sayı = kaç zaman sürdüğü).
-// Kaynaklar: neyzenim.com (Ney Dersleri 13), salihbora.com, varlikergen.com — çapraz kontrol edildi.
-// "tek" işaretli olanlar tek kaynakta bulunan kalıplardır; hocanın verdiği kalıp farklıysa "Özel kalıp" yazılabilir.
+// Kaynaklar: neyzenim.com (Ney Dersleri 13), salihbora.com, varlikergen.com; Devr-i Kebir yapısı TDV İslâm Ansiklopedisi.
+// tek:true = tek kaynakta bulunan ya da bileşenlerinden türetilen kalıp; hocayla doğrulanmalı.
 const USULLER = [
   {ad:'Nim Sofyan',  zaman:2,  v:[['D',1],['T',1]]},
   {ad:'Semai',       zaman:3,  v:[['D',1],['T',1],['T',1]]},
@@ -2003,73 +2022,124 @@ const USULLER = [
   {ad:'Evfer',       zaman:9,  v:[['D',2],['T',1],['T',1],['D',2],['T',1],['T',2]]},
   {ad:'Raks Aksağı', zaman:9,  v:[['D',2],['T',3],['D',2],['T',2]], tek:true},
   {ad:'Aksak Semai', zaman:10, v:[['D',2],['T',1],['T',2],['D',2],['T',2],['T',1]]},
-  {ad:'Curcuna',     zaman:10, v:[['D',2],['T',1],['T',2],['D',2],['T',2],['T',1]], alias:true},
+  {ad:'Curcuna',     zaman:10, v:[['D',2],['T',1],['T',2],['D',2],['T',2],['T',1]]},
   {ad:'Devr-i Revan',zaman:14, v:[['D',3],['D',2],['T',2],['D',3],['T',2],['T',2]], tek:true}
 ];
+// Devr-i Kebir 28/4: kullanıcının verdiği notasyondan okundu (vuruş süreleri toplamı = 28 zaman).
+// Yapı 6+4+6+4+4+4 (TDV: velvele ile bölünmüş ikinci mertebe).
+USULLER.push({ad:'Devr-i Kebir', zaman:28, tek:true, not:'Notasyon görselinden okundu, hocanla doğrula',
+  v:[['D',2],['D',2],['T',2],['D',1],['T',1],['T',.5],['T',.5],['D',1],['T',2],['T',2],['T',2],['D',2],['D',2],['T',2],['T',2],['T',1],['T',1],['T',1],['T',1]]});
+let ozelUsuller = [];            // {ad, kalip, silindi?, updatedAt}
+const OZEL_KEY = 'ozel_usuller', OZEL_FILE = 'usuller.json';
+function tumUsuller(){
+  return USULLER.concat(ozelUsuller.filter(o => !o.silindi).map(o => {
+    const u = parseKalip(o.kalip, 0); if(!u) return null;
+    const vu = o.velKalip ? parseKalip(o.velKalip, 0) : null;
+    return Object.assign({}, u, {ad:o.ad, ozel:true, kalip:o.kalip, velKalip:o.velKalip||'', vel: vu ? vu.v : null});
+  }).filter(Boolean));
+}
 function usulNorm(s){
   return String(s||'').toLocaleLowerCase('tr')
     .replace(/[âä]/g,'a').replace(/[îı]/g,'i').replace(/û/g,'u').replace(/ü/g,'u')
     .replace(/ö/g,'o').replace(/ş/g,'s').replace(/ç/g,'c').replace(/ğ/g,'g')
     .replace(/[^a-z0-9]/g,'');
 }
+function usulByName(text){
+  const n = usulNorm(text); if(!n) return null;
+  return tumUsuller().sort((a,b) => usulNorm(b.ad).length - usulNorm(a.ad).length)
+    .find(u => n.startsWith(usulNorm(u.ad))) || null;
+}
+const STROKE_RE = /^(d|t|düm|dum|tek)(\d{0,2}(?:\.\d)?|\.\d)$/i;
+function parseKalip(text, depth){
+  const parts = String(text||'').split('+').map(s => s.trim()).filter(Boolean);
+  if(!parts.length || depth > 2) return null;
+  let v = [];
+  for(const part of parts){
+    const toks = part.split(/[\s,]+/).filter(Boolean);
+    if(toks.length && toks.every(t => STROKE_RE.test(t))){
+      toks.forEach(t => { const m = t.match(STROKE_RE); v.push([/^d/i.test(m[1]) ? 'D' : 'T', Math.max(0.5, parseFloat(m[2]||'1')||1)]); });
+    } else {
+      const b = USULLER.find(u => usulNorm(u.ad) === usulNorm(part)) ||
+        ozelUsuller.filter(o => !o.silindi && usulNorm(o.ad) === usulNorm(part)).map(o => parseKalip(o.kalip, depth+1))[0];
+      if(!b) return null;
+      v = v.concat(b.v);
+    }
+  }
+  if(!v.length) return null;
+  return {ad:'Özel kalıp', zaman:v.reduce((a,x) => a + x[1], 0), v, ozel:true};
+}
 function findUsul(text){
   const raw = String(text||'').trim();
   if(!raw) return null;
-  // Özel kalıp: "D2 T1 T1" ya da "Düm2 Tek1 Tek1" biçimi
-  const toks = raw.split(/[\s,+]+/).filter(Boolean);
-  if(toks.length >= 2 && toks.every(t => /^(d|t|düm|dum|tek)\d{0,2}$/i.test(t))){
-    const v = toks.map(t => {
-      const m = t.match(/^(d|t|düm|dum|tek)(\d*)$/i);
-      return [/^d/i.test(m[1]) ? 'D' : 'T', Math.max(1, parseInt(m[2]||'1',10))];
-    });
-    return {ad:'Özel kalıp', zaman:v.reduce((a,x)=>a+x[1],0), v, ozel:true};
-  }
-  const n = usulNorm(raw);
-  const sorted = USULLER.slice().sort((a,b) => usulNorm(b.ad).length - usulNorm(a.ad).length);
-  return sorted.find(u => n.startsWith(usulNorm(u.ad))) || null;
+  if(raw.includes('+')) return parseKalip(raw, 0) || usulByName(raw);
+  return usulByName(raw) || parseKalip(raw, 0);
 }
-function usulSvg(u, activeUnit){
-  const unitW = u.zaman > 12 ? 24 : 34, pad = 14, H = 92, base = 52;
-  const W = pad*2 + u.zaman*unitW;
+// Bir eserin usul alanı: "Aksak; Sofyan"  ya da  "1. Selam: Devr-i Revan; 2. Selam: Evfer"
+function parseUsulList(text){
+  return String(text||'').split(/[;\n]+/).map(s => s.trim()).filter(Boolean).map(seg => {
+    const m = seg.match(/^([^:]{1,40}):\s*(.+)$/);
+    const etiket = m ? m[1].trim() : '', val = m ? m[2].trim() : seg;
+    const vel = /\s*\(?\bvelvele(li)?\)?\s*$/i.test(val);
+    const clean = val.replace(/\s*\(?\bvelvele(li)?\)?\s*$/i, '').trim();
+    return {etiket, raw:val, vel, u:findUsul(clean)};
+  });
+}
+function usulChipText(text){
+  const l = parseUsulList(text); if(!l.length) return '';
+  const n = l[0].u ? l[0].u.ad : l[0].raw;
+  return (n.length > 18 ? n.slice(0,18) + '…' : n) + (l.length > 1 ? ' +' + (l.length-1) : '');
+}
+function usulSvg(u, vv){
+  const v = vv || u.v;
+  const total = v.reduce((a,x) => a + x[1], 0);
+  const unitW = total > 12 ? 24 : 34, pad = 14, H = 92, base = 52;
+  const W = pad*2 + total*unitW;
   let x = pad, unit = 0, out = '';
-  u.v.forEach((st, gi) => {
-    const [tip, dur] = st;
-    const w = dur*unitW;
-    const cx = x + unitW/2;
-    // grup çerçevesi (vuruşun süresi)
-    out += `<rect x="${x+1.5}" y="14" width="${w-3}" height="${H-28}" rx="6" fill="${tip==='D'?'rgba(201,162,75,.10)':'rgba(111,179,162,.08)'}" stroke="${tip==='D'?'#8f7439':'#3c7d6e'}" stroke-width=".6"/>`;
-    // vuruş işareti
-    if(tip==='D') out += `<circle class="us-hit" data-u="${unit}" cx="${cx}" cy="${base-4}" r="${unitW*0.36}" fill="#c9a24b"/>`;
-    else out += `<circle class="us-hit" data-u="${unit}" cx="${cx}" cy="${base-4}" r="${unitW*0.24}" fill="none" stroke="#6fb3a2" stroke-width="2"/>`;
-    // süre çizgisi
-    if(dur>1) out += `<line x1="${cx+unitW*0.4}" y1="${base-4}" x2="${x+w-unitW*0.35}" y2="${base-4}" stroke="${tip==='D'?'#8f7439':'#3c7d6e'}" stroke-width="2" stroke-linecap="round"/>`;
-    out += `<text x="${cx}" y="${H-8}" text-anchor="middle" font-size="10" fill="${tip==='D'?'#e0bd6c':'#6fb3a2'}" font-family="Inter,sans-serif">${tip==='D'?'Düm':'Tek'}</text>`;
-    // zaman numaraları
-    for(let k=0;k<dur;k++){
-      out += `<text x="${x+k*unitW+unitW/2}" y="10" text-anchor="middle" font-size="9" fill="#847a63" font-family="Inter,sans-serif">${unit+k+1}</text>`;
-    }
+  v.forEach(([tip, dur], ei) => {
+    const w = dur*unitW, c = tip==='D', cx = x + Math.min(unitW, w)/2;
+    out += `<rect x="${x+1}" y="14" width="${Math.max(2,w-2)}" height="${H-28}" rx="5" fill="${c?'rgba(201,162,75,.10)':'rgba(111,179,162,.08)'}" stroke="${c?'#8f7439':'#3c7d6e'}" stroke-width=".6"/>`;
+    const r = Math.max(3, Math.min(c ? unitW*0.36 : unitW*0.24, w*0.4));
+    out += c ? `<circle class="us-hit" data-u="${ei}" cx="${cx}" cy="${base-4}" r="${r}" fill="#c9a24b"/>`
+             : `<circle class="us-hit" data-u="${ei}" cx="${cx}" cy="${base-4}" r="${r}" fill="none" stroke="#6fb3a2" stroke-width="2"/>`;
+    if(dur>1) out += `<line x1="${cx+unitW*0.4}" y1="${base-4}" x2="${x+w-unitW*0.35}" y2="${base-4}" stroke="${c?'#8f7439':'#3c7d6e'}" stroke-width="2" stroke-linecap="round"/>`;
+    out += `<text x="${x+w/2}" y="${H-8}" text-anchor="middle" font-size="${w<20?8:10}" fill="${c?'#e0bd6c':'#6fb3a2'}" font-family="Inter,sans-serif">${c?(w<20?'Dü':'Düm'):(w<20?'T':'Tek')}</text>`;
+    if(Number.isInteger(unit)) out += `<text x="${cx}" y="10" text-anchor="middle" font-size="9" fill="#847a63" font-family="Inter,sans-serif">${unit+1}</text>`;
     x += w; unit += dur;
   });
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${Math.min(W,320)}px;max-width:${W*1.6}px;height:auto;display:block;" role="img" aria-label="${escapeAttr(u.ad)} usûl vuruş şeması">${out}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${Math.round(Math.min(W, total>12?W*0.7:320))}px;max-width:${Math.round(W*1.6)}px;height:auto;display:block;" role="img" aria-label="${escapeAttr(u.ad)} usûl vuruş şeması">${out}</svg>`;
 }
-function usulBlockHtml(item){
-  const u = findUsul(item.usul);
-  if(!item.usul) return '';
-  if(!u) return `<div class="usul-box"><p class="ui usul-title">Usûl: ${escapeHtml(item.usul)}</p><p class="ui" style="font-size:.78rem;color:var(--ink-faint);margin:.3rem 0 0;">Bu usûl için hazır şema yok. Düzenle'den "Düm2 Tek1 Tek1" gibi özel kalıp yazarsan şema çıkar.</p></div>`;
-  return `<div class="usul-box" data-usul="1">
-    <p class="ui usul-title">Usûl: ${escapeHtml(u.ad)} <span style="color:var(--ink-faint);">· ${u.zaman} zaman${u.tek?' · tek kaynak, hocanla doğrula':''}</span></p>
-    <div class="usul-scroll" id="usulSvgWrap">${usulSvg(u)}</div>
+function usulPlayerHtml(u, etiket, key, startVel){
+  const baslik = (etiket ? escapeHtml(etiket) + ' — ' : '') + escapeHtml(u.ad);
+  const not = u.tek ? ' · hocanla doğrula' : '';
+  const useVel = !!(startVel && u.vel);
+  const cur = useVel ? u.vel : u.v;
+  const zam = Math.round(cur.reduce((a,x) => a + x[1], 0) * 10) / 10;
+  return `<div class="usul-box" data-usul="${key}" data-vel="${useVel ? 1 : 0}">
+    <p class="ui usul-title">${baslik} <span class="us-zaman" style="color:var(--ink-faint);">· ${zam} zaman${not}</span></p>
+    ${u.vel ? `<div class="ui us-var" style="margin-bottom:.5rem;"><button type="button" class="btn-ghost us-v0" style="${useVel?'':'border-color:var(--gold);color:var(--gold-bright);'}">Normal</button> <button type="button" class="btn-ghost us-v1" style="${useVel?'border-color:var(--gold);color:var(--gold-bright);':''}">Velveleli</button></div>` : ''}
+    <div class="usul-scroll us-svgwrap">${usulSvg(u, cur)}</div>
     <div class="usul-ctl ui">
-      <button type="button" class="btn-ghost" id="usulPlayBtn">▶ Çal</button>
-      <label>Tempo <input type="range" id="usulBpm" min="30" max="200" value="${u.zaman>=9?110:90}"><span id="usulBpmVal"></span></label>
+      <button type="button" class="btn-ghost us-play">▶ Çal</button>
+      <label>Tempo <input type="range" class="us-bpm" min="30" max="240" value="${u.zaman>=9?110:90}"><span class="us-bpmval"></span></label>
     </div>
+    ${u.not ? `<p class="ui" style="font-size:.72rem;color:var(--ink-faint);margin:.4rem 0 0;">${escapeHtml(u.not)}</p>` : ''}
   </div>`;
 }
-let usulTimer = null, usulCtx = null;
+function usulBlockHtml(item){
+  if(!item.usul) return '';
+  return parseUsulList(item.usul).map((s, i) => s.u
+    ? usulPlayerHtml(s.u, s.etiket, 'k'+i, s.vel)
+    : `<div class="usul-box"><p class="ui usul-title">${s.etiket?escapeHtml(s.etiket)+' — ':''}Usûl: ${escapeHtml(s.raw)}</p><p class="ui" style="font-size:.78rem;color:var(--ink-faint);margin:.3rem 0 0;">Bu usûl için hazır şema yok. Usûller sekmesinden ekleyebilir ya da "Düm2 Tek1 Tek1" gibi kalıp yazabilirsin.</p></div>`
+  ).join('');
+}
+let usulTimer = null, usulCtx = null, usulActive = null;
 function usulStop(){
   if(usulTimer){ clearTimeout(usulTimer); usulTimer = null; }
-  document.querySelectorAll('.us-hit').forEach(el => el.style.opacity = '');
-  const b = document.getElementById('usulPlayBtn'); if(b) b.textContent = '▶ Çal';
+  if(usulActive){
+    usulActive.box.querySelectorAll('.us-hit').forEach(el => el.style.opacity = '');
+    usulActive.btn.textContent = '▶ Çal';
+    usulActive = null;
+  }
 }
 function usulBeep(tip){
   try{
@@ -2083,36 +2153,146 @@ function usulBeep(tip){
     o.connect(g); g.connect(usulCtx.destination); o.start(t); o.stop(t + 0.4);
   }catch(e){}
 }
-function mountUsul(item){
-  usulStop();
-  const box = document.querySelector('.usul-box[data-usul]');
-  if(!box) return;
-  const u = findUsul(item.usul);
-  const bpm = document.getElementById('usulBpm'), val = document.getElementById('usulBpmVal');
-  const showBpm = () => { val.textContent = bpm.value + ' zaman/dk'; };
-  showBpm(); bpm.addEventListener('input', showBpm);
-  // zaman → vuruş eşlemesi
-  const steps = []; // her zaman birimi için {tip|null, vurus indeksi}
-  u.v.forEach(([tip,dur]) => { for(let k=0;k<dur;k++) steps.push(k===0 ? tip : null); });
-  document.getElementById('usulPlayBtn').addEventListener('click', () => {
-    if(usulTimer){ usulStop(); return; }
-    document.getElementById('usulPlayBtn').textContent = '■ Durdur';
-    let i = 0;
-    const tick = () => {
-      document.querySelectorAll('.us-hit').forEach(el => el.style.opacity = '.35');
-      const hit = document.querySelector('.us-hit[data-u="'+i+'"]');
-      if(steps[i]){ usulBeep(steps[i]); if(hit) hit.style.opacity = '1'; }
-      i = (i + 1) % steps.length;
-      usulTimer = setTimeout(tick, 60000 / Number(bpm.value));
+// Sayfadaki tüm .usul-box[data-usul] kutularını çalar hâline getirir. listFor(box) → usûl nesnesi
+function mountUsulBoxes(root, resolve){
+  root.querySelectorAll('.usul-box[data-usul]').forEach(box => {
+    const u = resolve(box); if(!u) return;
+    const bpm = box.querySelector('.us-bpm'), val = box.querySelector('.us-bpmval'), btn = box.querySelector('.us-play');
+    const show = () => { val.textContent = bpm.value + ' zaman/dk'; };
+    show(); bpm.addEventListener('input', show);
+    const pat = () => (box.getAttribute('data-vel') === '1' && u.vel) ? u.vel : u.v;
+    const setVar = (isVel) => {
+      usulStop();
+      box.setAttribute('data-vel', isVel ? '1' : '0');
+      box.querySelector('.us-svgwrap').innerHTML = usulSvg(u, pat());
+      const z = Math.round(pat().reduce((a,x) => a + x[1], 0) * 10) / 10;
+      box.querySelector('.us-zaman').textContent = '· ' + z + ' zaman' + (u.tek ? ' · hocanla doğrula' : '');
+      const b0 = box.querySelector('.us-v0'), b1 = box.querySelector('.us-v1');
+      if(b0 && b1){
+        b0.style.cssText = isVel ? '' : 'border-color:var(--gold);color:var(--gold-bright);';
+        b1.style.cssText = isVel ? 'border-color:var(--gold);color:var(--gold-bright);' : '';
+      }
     };
-    tick();
+    const b0 = box.querySelector('.us-v0'), b1 = box.querySelector('.us-v1');
+    if(b0) b0.addEventListener('click', () => setVar(false));
+    if(b1) b1.addEventListener('click', () => setVar(true));
+    btn.addEventListener('click', () => {
+      const same = usulActive && usulActive.btn === btn;
+      usulStop();
+      if(same) return;
+      usulActive = {box, btn};
+      btn.textContent = '■ Durdur';
+      const v = pat();
+      let i = 0;
+      const tick = () => {
+        box.querySelectorAll('.us-hit').forEach(el => el.style.opacity = '.35');
+        const hit = box.querySelector('.us-hit[data-u="'+i+'"]');
+        usulBeep(v[i][0]); if(hit) hit.style.opacity = '1';
+        const wait = v[i][1] * 60000 / Number(bpm.value);
+        i = (i + 1) % v.length;
+        usulTimer = setTimeout(tick, wait);
+      };
+      tick();
+    });
   });
 }
+function mountUsul(item){
+  usulStop();
+  const list = parseUsulList(item.usul);
+  const box = document.getElementById('detailContent');
+  mountUsulBoxes(box, b => { const i = Number(String(b.getAttribute('data-usul')).slice(1)); return list[i] && list[i].u; });
+}
+
+// --- Özel usûller: bu cihazda + (token varsa) GitHub'daki usuller.json ---
+function loadOzelLocal(){
+  try{ ozelUsuller = JSON.parse(localStorage.getItem(OZEL_KEY) || '[]') || []; }catch(e){ ozelUsuller = []; }
+}
+function mergeOzel(a, b){
+  const m = new Map();
+  a.concat(b).forEach(o => { const k = usulNorm(o.ad), p = m.get(k); if(!p || (o.updatedAt||0) >= (p.updatedAt||0)) m.set(k, o); });
+  return Array.from(m.values());
+}
+async function fetchOzelRemote(){
+  const res = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${OZEL_FILE}?t=${Date.now()}`, {cache:'no-store'});
+  if(!res.ok) return [];
+  const j = await res.json(); return Array.isArray(j) ? j : [];
+}
+async function syncOzel(){
+  let remote = [];
+  try{ remote = await fetchOzelRemote(); }catch(e){ return {ok:false, offline:true}; }
+  ozelUsuller = mergeOzel(ozelUsuller, remote);
+  localStorage.setItem(OZEL_KEY, JSON.stringify(ozelUsuller));
+  return {ok:true};
+}
+async function pushOzel(){
+  const token = getToken(); if(!token) return {ok:false, reason:'token yok'};
+  try{
+    const remote = await fetchOzelRemote();
+    ozelUsuller = mergeOzel(ozelUsuller, remote);
+  }catch(e){}
+  localStorage.setItem(OZEL_KEY, JSON.stringify(ozelUsuller));
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(ozelUsuller, null, 1))));
+  return pushFileToGithub(token, OZEL_FILE, b64, 'Özel usûller güncellendi');
+}
+function usulNamesForList(){ return Array.from(new Set(tumUsuller().map(u => u.ad))); }
+
+// --- Usûller sekmesi ---
+function renderUsulView(){
+  const q = usulNorm(document.getElementById('search').value);
+  const all = tumUsuller().filter(u => !q || usulNorm(u.ad).includes(q)).sort((a,b) => a.zaman - b.zaman || trSort(a.ad, b.ad));
+  const wrap = document.getElementById('usulList2');
+  wrap.innerHTML = all.length ? all.map((u, i) => `<div class="usul-item" data-i="${i}">
+      ${usulPlayerHtml(u, '', 'l'+i, false)}
+      ${u.ozel ? `<div style="text-align:right;margin-top:.3rem;"><span class="ui" style="font-size:.72rem;color:var(--ink-faint);">Kalıp: ${escapeHtml(u.kalip||'')}</span> <button type="button" class="btn-ghost us-del" data-ad="${escapeAttr(u.ad)}" style="margin-left:.5rem;">Sil</button></div>` : ''}
+    </div>`).join('') : '<div class="empty">Bu aramaya uyan usûl yok.</div>';
+  usulStop();
+  mountUsulBoxes(wrap, b => all[Number(String(b.getAttribute('data-usul')).slice(1))]);
+  wrap.querySelectorAll('.us-del').forEach(btn => btn.addEventListener('click', async () => {
+    const ad = btn.getAttribute('data-ad');
+    if(!confirm(ad + ' silinsin mi?')) return;
+    const o = ozelUsuller.find(x => usulNorm(x.ad) === usulNorm(ad));
+    if(o){ o.silindi = true; o.updatedAt = Date.now(); }
+    const r = await pushOzel();
+    showToast(r.ok ? 'Silindi' : 'Bu cihazda silindi' + (r.reason ? ' (GitHub: ' + r.reason + ')' : ''));
+    renderUsulView(); renderMakamDatalist();
+  }));
+}
+function usulBuilderPreview(){
+  const kalip = document.getElementById('ub-kalip').value, out = document.getElementById('ub-prev');
+  const velT = document.getElementById('ub-vel').value.trim(), vu = velT ? parseKalip(velT, 0) : null;
+  const u = kalip.trim() ? parseKalip(kalip, 0) : null;
+  out.innerHTML = u ? usulSvg(u) + `<p class="ui" style="font-size:.74rem;color:var(--ink-faint);margin:.3rem 0 0;">${u.zaman} zaman</p>` + (velT ? (vu ? `<p class="ui" style="font-size:.74rem;color:var(--gold-bright);margin:.5rem 0 .2rem;">Velveleli</p>` + usulSvg(u, vu.v) + `<p class="ui" style="font-size:.74rem;color:var(--ink-faint);margin:.3rem 0 0;">${vu.zaman} zaman</p>` : `<p class="ui" style="font-size:.74rem;color:var(--danger);">Velveleli kalıp anlaşılamadı.</p>`) : '')
+    : `<p class="ui" style="font-size:.78rem;color:var(--ink-faint);margin:0;">${kalip.trim() ? 'Kalıp anlaşılamadı. Örnek: Düm2 Tek1 Tek1 ya da Yürük Semai + Sofyan' : 'Önizleme burada çıkar.'}</p>`;
+  return u;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const k = document.getElementById('ub-kalip'); if(k) k.addEventListener('input', usulBuilderPreview);
+  const kv = document.getElementById('ub-vel'); if(kv) kv.addEventListener('input', usulBuilderPreview);
+  const s = document.getElementById('ub-save'); if(s) s.addEventListener('click', async () => {
+    const ad = document.getElementById('ub-ad').value.trim(), kalip = document.getElementById('ub-kalip').value.trim();
+    const st = document.getElementById('ub-status');
+    if(!ad){ st.textContent = 'Usûle bir ad ver.'; return; }
+    if(USULLER.some(u => usulNorm(u.ad) === usulNorm(ad))){ st.textContent = 'Bu ad hazır bir usûle ait, başka ad seç.'; return; }
+    if(!usulBuilderPreview()){ st.textContent = 'Kalıp anlaşılamadı.'; return; }
+    const ex = ozelUsuller.find(x => usulNorm(x.ad) === usulNorm(ad));
+    const velKalip = document.getElementById('ub-vel').value.trim();
+    if(velKalip && !parseKalip(velKalip, 0)){ st.textContent = 'Velveleli kalıp anlaşılamadı.'; return; }
+    if(ex){ ex.kalip = kalip; ex.velKalip = velKalip; ex.silindi = false; ex.updatedAt = Date.now(); } else ozelUsuller.push({ad, kalip, velKalip, updatedAt:Date.now()});
+    st.textContent = 'Kaydediliyor…';
+    const r = await pushOzel();
+    st.textContent = r.ok ? 'Kaydedildi ✓ (tüm cihazlarda görünür)' : 'Bu cihazda kaydedildi' + (r.reason === 'token yok' ? ' (bu cihazda token yok, GitHub\'a gitmedi).' : ' (GitHub: ' + r.reason + ').');
+    document.getElementById('ub-ad').value = ''; document.getElementById('ub-kalip').value = ''; document.getElementById('ub-vel').value = ''; usulBuilderPreview();
+    renderUsulView(); renderMakamDatalist();
+  });
+  usulBuilderPreview();
+});
 </script>
 
 <script>
+loadOzelLocal();
 loadData();
 initJournal();
+syncOzel().then(() => { renderMakamDatalist(); if(currentView === 'usul') renderUsulView(); });
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch((e) => console.error('SW kayıt hatası:', e));
