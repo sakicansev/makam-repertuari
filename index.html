@@ -243,6 +243,10 @@
   .gcell.on-T{background:var(--teal); border-color:var(--teal-border);}
   .gcell.playing{outline:2px solid var(--ink); outline-offset:1px;}
   .ug-hold{background:var(--panel-2);}
+  .mk-btn{background:none; border:0.5px solid var(--gold-dim); color:var(--gold); border-radius:12px; font-size:.68rem; padding:.1rem .5rem; margin-left:.6rem; cursor:pointer; vertical-align:middle; font-family:'Inter',sans-serif;}
+  .mk-sec{margin:0 0 .9rem;} .mk-sec h4{margin:0 0 .25rem; font-family:'Inter',sans-serif; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); font-weight:500;}
+  .mk-sec p{margin:0; font-size:.95rem; line-height:1.55; color:var(--ink);}
+  .mk-gap{font-size:.78rem; color:var(--ink-faint); border:0.5px dashed var(--border-strong); border-radius:8px; padding:.5rem .7rem; font-family:'Inter',sans-serif;}
 </style>
 </head>
 <body>
@@ -374,6 +378,13 @@
       <button type="button" class="btn-danger" id="deletePdfBtn" style="display:none; margin-right:0;">🗑 İçe aktarılan PDF'i sil</button>
       <input type="file" id="importPdfInput" accept="application/pdf" style="display:none;">
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="makamOverlay" style="display:none;">
+  <div class="modal">
+    <div id="makamContent"></div>
+    <div class="modal-actions"><button type="button" class="btn-ghost" id="closeMakamBtn">Kapat</button></div>
   </div>
 </div>
 
@@ -777,12 +788,12 @@ function renderContent(){
     const makamlar = Array.from(new Set(items.map(d => d.makam))).sort(trSort);
     makamlar.forEach(m => {
       const group = items.filter(d => d.makam === m);
-      html += `<h2 class="group-heading">${escapeHtml(m)}</h2><div class="grid">`;
+      html += `<h2 class="group-heading">${escapeHtml(m)}<button type="button" class="mk-btn" data-makam="${escapeAttr(m)}">ⓘ Makam hakkında</button></h2><div class="grid">`;
       group.forEach(item => html += cardHtml(item));
       html += `</div>`;
     });
   } else {
-    html += `<h2 class="group-heading">${escapeHtml(currentMakam)}</h2><div class="grid">`;
+    html += `<h2 class="group-heading">${escapeHtml(currentMakam)}<button type="button" class="mk-btn" data-makam="${escapeAttr(currentMakam)}">ⓘ Makam hakkında</button></h2><div class="grid">`;
     items.forEach(item => html += cardHtml(item));
     html += `</div>`;
   }
@@ -843,7 +854,7 @@ function openDetailModal(id){
   box.innerHTML = `
     ${item.tur ? `<span class="badge">${escapeHtml(item.tur)}</span>` : ''}
     <p style="font-size:1.5rem; font-weight:500; color:var(--ink); margin:0.3rem 0 0.2rem; line-height:1.3;">${escapeHtml(displayTitle(item))}</p>
-    <p class="ui" style="font-size:0.9rem; color:var(--gold-bright); margin:0 0 1rem;">${escapeHtml(item.makam)}</p>
+    <p class="ui" style="font-size:0.9rem; color:var(--gold-bright); margin:0 0 1rem;">${escapeHtml(item.makam)}<button type="button" class="mk-btn" data-makam="${escapeAttr(item.makam)}">ⓘ Makam hakkında</button></p>
     ${rows.map(([label,val]) => `
       <div style="margin-bottom:0.6rem;">
         <p class="ui" style="font-size:0.72rem; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; margin:0 0 0.15rem;">${label}</p>
@@ -2063,14 +2074,67 @@ const USULLER = [
 // Yapı 6+4+6+4+4+4 (TDV: velvele ile bölünmüş ikinci mertebe).
 USULLER.push({ad:'Devr-i Kebir', zaman:28, tek:true, not:'Notasyon görselinden okundu, hocanla doğrula',
   v:[['D',2],['D',2],['T',2],['D',1],['T',1],['T',.5],['T',.5],['D',1],['T',2],['T',2],['T',2],['D',2],['D',2],['T',2],['T',2],['T',1],['T',1],['T',1],['T',1]]});
+// --- Makam tanıtımları ---
+// Yalnızca kaynağı doğrulanmış bilgi yazılır; kaynakta bulunmayan başlıklar "henüz doğrulanmadı" olarak işaretlenir.
+// Daha fazla makam: repodaki makamlar.json dosyası (aynı biçim) buradaki kayıtların üstüne yazılır.
+let MAKAM_INFO = {
+  'Uşşak': {
+    ozet: 'Karar sesi Dügâh olan, çıkıcı seyirli bir makamdır. Alt çeşnisi Uşşak dörtlüsü, üst çeşnisi Bûselik beşlisidir.',
+    bolumler: [
+      {b:'Dizi ve temel perdeler', m:'Karar (durak): Dügâh. Tiz durak: Muhayyer. Güçlü: Neva. Yeden: Rast. Perdeler: Dügâh, Segâh, Çargâh, Neva, Hüseynî, Acem, Gerdâniye, Muhayyer. Alt çeşni Dügâh–Neva arası Uşşak dörtlüsü; Neva\'dan sonra Bûselik beşlisi gelir.'},
+      {b:'Seyir', m:'Çıkıcı.'},
+      {b:'Komşu makamlar', m:'Bayâtî ile aynı diziyi paylaşır (Uşşak, Bayâtî dizisinin uygulamasıdır). Hüseynî ile perdeleri aynıdır ama Hüseynî\'de güçlü sesi 4. perde yerine 5. perdededir. Yeden Rast, durak kabul edilince Uşşak, Rast\'a bağlanan bir seyir gibi işler ve iki makam arasında geçki yapılabilir.'},
+      {b:'Tarihçe', m:'Safiyüddin Urmevî (1216–1294) Uşşak\'ı önce dörtlü bir tabaka olarak, sonra bir daire olarak tanımlamıştır. 15. yüzyıldan sonraki edvar ve risalelerde bu kullanım terk edilmiştir. Ad yüzyıllardır aynı kalsa da ezgisel yapı sürekli değişmiş; farklı dönemlerde Uşşak adıyla anılan makamlar arasında 13. yy\'da Nevruz, 15. yy\'da Rekb/Çargâh-ı Rekb, 18. yy\'da Dügâh-ı Kadîm ve Hüzî gösterilir. Bu makalenin yazarına göre Uşşak\'ın teorik altyapısı yeterince ele alınmamış ve bu yanlış anlamalara yol açmaktadır.'}
+    ],
+    eksik: ['Adının kökeni', 'Kullanılan arızalar (Bûselik, Hüseynî vb. ayrıntısı)', 'Seyrin aşamaları ve geçkiler', 'Ünlü eserler ve bestekârlar', 'Yaygınlığı'],
+    kaynaklar: [['Uşşak (Turkish makam) — Wikipedia','https://en.wikipedia.org/wiki/U%C5%9F%C5%9Fak_(Turkish_makam)'],['İrden, S. (2025). Tarihsel süreçlere göre Uşşak makamı. Yegah Musicology Journal 8(2)','https://avesis.kocaeli.edu.tr/yayin/356c32c0-76e6-4902-b80f-82f21475075e/ussak-makam-according-to-historical-processes-tarihsel-sureclere-gore-ussak-makami']]
+  }
+};
+async function loadMakamInfo(){
+  try{
+    const r = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/makamlar.json?t=${Date.now()}`, {cache:'no-store'});
+    if(r.ok){ const j = await r.json(); if(j && typeof j === 'object') MAKAM_INFO = Object.assign({}, MAKAM_INFO, j); }
+  }catch(e){}
+}
+function openMakamInfo(name){
+  const info = MAKAM_INFO[name];
+  const box = document.getElementById('makamContent');
+  let h = `<p style="font-size:1.5rem; font-weight:500; margin:0 0 .3rem; color:var(--ink);">${escapeHtml(name)}</p>`;
+  if(!info){
+    h += `<p class="mk-gap" style="margin-top:.6rem;">Bu makam için tanıtım henüz hazırlanmadı.</p>`;
+  } else {
+    h += `<p class="ui" style="font-size:.9rem; color:var(--gold-bright); margin:0 0 1rem; line-height:1.5;">${escapeHtml(info.ozet || '')}</p>`;
+    (info.bolumler || []).forEach(x => { h += `<div class="mk-sec"><h4>${escapeHtml(x.b)}</h4><p>${escapeHtml(x.m)}</p></div>`; });
+    if(info.eksik && info.eksik.length) h += `<p class="mk-gap">Henüz doğrulanmadı: ${info.eksik.map(escapeHtml).join(' · ')}</p>`;
+    if(info.kaynaklar && info.kaynaklar.length) h += `<div class="mk-sec" style="margin-top:.9rem;"><h4>Kaynaklar</h4>${info.kaynaklar.map(([t,u]) => `<p class="ui" style="font-size:.8rem;"><a href="${escapeAttr(u)}" target="_blank" rel="noopener" style="color:var(--teal);">${escapeHtml(t)}</a></p>`).join('')}</div>`;
+  }
+  box.innerHTML = h;
+  document.getElementById('makamOverlay').style.display = 'flex';
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.mk-btn'); if(!b) return;
+  e.stopPropagation(); openMakamInfo(b.getAttribute('data-makam'));
+});
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('closeMakamBtn').addEventListener('click', () => { document.getElementById('makamOverlay').style.display = 'none'; });
+  document.getElementById('makamOverlay').addEventListener('click', e => { if(e.target.id === 'makamOverlay') e.target.style.display = 'none'; });
+});
 let ozelUsuller = [];            // {ad, kalip, silindi?, updatedAt}
 const OZEL_KEY = 'ozel_usuller', OZEL_FILE = 'usuller.json';
+function vToText(v){ return v.map(([t, d]) => t + (Math.round(d * 10) / 10)).join(' '); }
 function tumUsuller(){
-  return USULLER.concat(ozelUsuller.filter(o => !o.silindi).map(o => {
+  const ov = ozelUsuller.filter(o => !o.silindi && o.velFor && o.velKalip);
+  const base = USULLER.map(u => {
+    const o = ov.find(x => usulNorm(x.ad) === usulNorm(u.ad));
+    const vu = o ? parseKalip(o.velKalip, 0) : null;
+    return vu ? Object.assign({}, u, {vel: vu.v, velOverride:true}) : u;
+  });
+  const custom = ozelUsuller.filter(o => !o.silindi && !o.velFor).map(o => {
     const u = parseKalip(o.kalip, 0); if(!u) return null;
     const vu = o.velKalip ? parseKalip(o.velKalip, 0) : null;
     return Object.assign({}, u, {ad:o.ad, ozel:true, kalip:o.kalip, velKalip:o.velKalip||'', vel: vu ? vu.v : null});
-  }).filter(Boolean));
+  }).filter(Boolean);
+  return base.concat(custom);
 }
 function usulNorm(s){
   return String(s||'').toLocaleLowerCase('tr')
@@ -2094,7 +2158,7 @@ function parseKalip(text, depth){
       toks.forEach(t => { const m = t.match(STROKE_RE); v.push([/^d/i.test(m[1]) ? 'D' : 'T', Math.max(0.5, parseFloat(m[2]||'1')||1)]); });
     } else {
       const b = USULLER.find(u => usulNorm(u.ad) === usulNorm(part)) ||
-        ozelUsuller.filter(o => !o.silindi && usulNorm(o.ad) === usulNorm(part)).map(o => parseKalip(o.kalip, depth+1))[0];
+        ozelUsuller.filter(o => !o.silindi && !o.velFor && usulNorm(o.ad) === usulNorm(part)).map(o => parseKalip(o.kalip, depth+1))[0];
       if(!b) return null;
       v = v.concat(b.v);
     }
@@ -2314,10 +2378,20 @@ function renderUsulView(){
   const wrap = document.getElementById('usulList2');
   wrap.innerHTML = all.length ? all.map((u, i) => `<div class="usul-item" data-i="${i}">
       ${usulPlayerHtml(u, '', 'l'+i, false)}
-      ${u.ozel ? `<div style="text-align:right;margin-top:.3rem;"><span class="ui" style="font-size:.72rem;color:var(--ink-faint);">Kalıp: ${escapeHtml(u.kalip||'')}</span> <button type="button" class="btn-ghost us-del" data-ad="${escapeAttr(u.ad)}" style="margin-left:.5rem;">Sil</button></div>` : ''}
+      ${u.ozel ? `<div style="text-align:right;margin-top:.3rem;"><span class="ui" style="font-size:.72rem;color:var(--ink-faint);">Kalıp: ${escapeHtml(u.kalip||'')}</span> <button type="button" class="btn-ghost us-del" data-ad="${escapeAttr(u.ad)}" style="margin-left:.5rem;">Sil</button></div>`
+        : `<div style="text-align:right;margin-top:.3rem;"><button type="button" class="btn-ghost us-addvel" data-ad="${escapeAttr(u.ad)}">${u.vel ? 'Velveleliyi düzenle' : '+ Velveleli ekle'}</button>${u.velOverride ? ` <button type="button" class="btn-ghost us-del" data-ad="${escapeAttr(u.ad)}" style="margin-left:.4rem;">Velveleliyi sil</button>` : ''}</div>`}
     </div>`).join('') : '<div class="empty">Bu aramaya uyan usûl yok.</div>';
   usulStop();
   mountUsulBoxes(wrap, b => all[Number(String(b.getAttribute('data-usul')).slice(1))]);
+  wrap.querySelectorAll('.us-addvel').forEach(btn => btn.addEventListener('click', () => {
+    const u = all.find(x => x.ad === btn.getAttribute('data-ad')); if(!u) return;
+    document.getElementById('ub-ad').value = u.ad;
+    document.getElementById('ub-kalip').value = vToText(USULLER.find(x => x.ad === u.ad).v);
+    document.getElementById('ub-vel').value = u.vel ? vToText(u.vel) : '';
+    ug.target = 1; ugFromText(document.getElementById('ub-vel').value); ugSyncControls(); ugRender(); usulBuilderPreview();
+    document.getElementById('ub-status').textContent = u.ad + ' için velveleli kalıbı giriyorsun. Normal kalıp değişmez; ızgara velveleliyi düzenliyor.';
+    const adEl = document.getElementById('ub-ad'); if(adEl.scrollIntoView) adEl.scrollIntoView({behavior:'smooth', block:'center'});
+  }));
   wrap.querySelectorAll('.us-del').forEach(btn => btn.addEventListener('click', async () => {
     const ad = btn.getAttribute('data-ad');
     if(!confirm(ad + ' silinsin mi?')) return;
@@ -2462,7 +2536,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const ad = document.getElementById('ub-ad').value.trim(), kalip = document.getElementById('ub-kalip').value.trim();
     const st = document.getElementById('ub-status');
     if(!ad){ st.textContent = 'Usûle bir ad ver.'; return; }
-    if(USULLER.some(u => usulNorm(u.ad) === usulNorm(ad))){ st.textContent = 'Bu ad hazır bir usûle ait, başka ad seç.'; return; }
+    const builtin = USULLER.some(u => usulNorm(u.ad) === usulNorm(ad));
+    if(builtin){
+      const vk = document.getElementById('ub-vel').value.trim();
+      if(!vk || !parseKalip(vk, 0)){ st.textContent = 'Hazır usûlde yalnızca velveleli kalıp eklenir; velveleli alanı boş ya da anlaşılamadı.'; return; }
+      const exv = ozelUsuller.find(x => usulNorm(x.ad) === usulNorm(ad));
+      if(exv){ exv.velFor = true; exv.velKalip = vk; exv.silindi = false; exv.updatedAt = Date.now(); } else ozelUsuller.push({ad, velFor:true, kalip:'', velKalip:vk, updatedAt:Date.now()});
+      st.textContent = 'Kaydediliyor…';
+      const rv = await pushOzel();
+      st.textContent = rv.ok ? 'Velveleli kaydedildi ✓' : 'Bu cihazda kaydedildi' + (rv.reason === 'token yok' ? ' (bu cihazda token yok, GitHub\'a gitmedi).' : ' (GitHub: ' + rv.reason + ').');
+      document.getElementById('ub-ad').value = ''; document.getElementById('ub-kalip').value = ''; document.getElementById('ub-vel').value = '';
+      ug.target = 0; ug.cells = new Array(ug.n).fill(null); ugSyncControls(); ugRender(); usulBuilderPreview();
+      renderUsulView(); renderMakamDatalist();
+      return;
+    }
     if(!usulBuilderPreview()){ st.textContent = 'Kalıp anlaşılamadı.'; return; }
     const ex = ozelUsuller.find(x => usulNorm(x.ad) === usulNorm(ad));
     const velKalip = document.getElementById('ub-vel').value.trim();
@@ -2482,6 +2569,7 @@ document.addEventListener('DOMContentLoaded', () => {
 loadOzelLocal();
 loadData();
 initJournal();
+loadMakamInfo();
 syncOzel().then(() => { renderMakamDatalist(); if(currentView === 'usul') renderUsulView(); });
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
