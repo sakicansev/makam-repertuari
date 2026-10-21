@@ -414,7 +414,13 @@
         <datalist id="turList"></datalist>
       </label>
       <label>Usûl (düm-tek şeması için)
-        <input id="f-usul" list="usulList" type="text" placeholder="Örn. Aksak   —   birden fazlaysa ; ile: 1. Selam: Devr-i Revan; 2. Selam: Evfer">
+        <input id="f-usul" list="usulList" type="text" placeholder="Örn. Aksak">
+        <div class="ui" style="font-size:.76rem;color:var(--ink-faint);line-height:1.55;margin-top:.35rem;">
+          <div>• Tek usûl: <b>Aksak</b></div>
+          <div>• Birden fazla usûl: araya <b>;</b> koy ve başına etiket yaz. Örn: <b>1. Selam: Devr-i Revan; 2. Selam: Evfer</b></div>
+          <div>• Velveleli çalmak için sonuna <b>velveleli</b> ekle. Örn: <b>Düyek velveleli</b></div>
+          <div>• Mertebe için ölçüyü usûl kutusundan seçersin (4/8, 4/4 gibi).</div>
+        </div>
         <datalist id="usulList"></datalist>
       </label>
       <label>Makam
@@ -2757,9 +2763,20 @@ function usulNorm(s){
     .replace(/[^a-z0-9]/g,'');
 }
 function usulByName(text){
-  const n = usulNorm(text); if(!n) return null;
-  return tumUsuller().sort((a,b) => usulNorm(b.ad).length - usulNorm(a.ad).length)
-    .find(u => n.startsWith(usulNorm(u.ad))) || null;
+  const n = usulNorm(text).replace(/yoruk/g, 'yuruk'); if(!n) return null;
+  const all = tumUsuller();
+  const hit = all.slice().sort((a,b) => usulNorm(b.ad).length - usulNorm(a.ad).length)
+    .find(u => n.startsWith(usulNorm(u.ad)));
+  if(hit){
+    const i = (hit.mert || []).findIndex(m => m.ad && usulNorm(m.ad) === usulNorm(hit.ad));
+    return i > 0 ? Object.assign({}, hit, {mertSel:i}) : hit;
+  }
+  // Mertebe adı ("Ağır Düyek", "Ağır Evfer", "Yürük Aksak"...): ilgili usûl + o mertebe seçili gelir
+  const al = [];
+  all.forEach(u => (u.mert || []).forEach((m, i) => { if(m.ad && !al.some(a => a.n === usulNorm(m.ad) && a.u === u)) al.push({n:usulNorm(m.ad), u, i}); }));
+  al.sort((a,b) => b.n.length - a.n.length);
+  const a = al.find(x => n.startsWith(x.n));
+  return a ? Object.assign({}, a.u, {mertSel:a.i}) : null;
 }
 const STROKE_RE = /^(d|t|düm|dum|tek)(\d{0,2}(?:\.\d{1,2})?|\.\d{1,2})$/i;
 function parseKalip(text, depth){
@@ -2829,9 +2846,11 @@ function usulSvg(u, vv, olcu){
 }
 function mertK(o){ const d = Number(String(o).split('/')[1]) || 8; return 8 / d; }   // 8→1, 4→2, 2→4 (birim notası büyüklüğü)
 function usulBaseBpm(u){ return u.zaman >= 9 ? 110 : 90; }
+function usulStartBpm(u){ const i = u.mertSel || 0; return u.mert && u.mert[i] ? Math.max(15, Math.round(usulBaseBpm(u) * mertK(u.mert[0].o) / mertK(u.mert[i].o))) : usulBaseBpm(u); }
 function mertHtml(u){
   if(!u.mert || !u.mert.length) return '';
-  const ch = u.mert.map((m, i) => `<button type="button" class="btn-ghost us-mert-b" data-i="${i}" style="${i===0?'border-color:var(--gold);color:var(--gold-bright);':''}">${escapeHtml(m.o)}${m.ad ? ' · ' + escapeHtml(m.ad) : ''}</button>`).join(' ');
+  const sel = u.mertSel || 0;
+  const ch = u.mert.map((m, i) => `<button type="button" class="btn-ghost us-mert-b" data-i="${i}" style="${i===sel?'border-color:var(--gold);color:var(--gold-bright);':''}">${escapeHtml(m.o)}${m.ad ? ' · ' + escapeHtml(m.ad) : ''}</button>`).join(' ');
   return `<div class="ui us-mert" style="margin:0 0 .5rem;font-size:.74rem;color:var(--ink-faint);">Ölçü / mertebe: ${ch}${u.mert.length > 1 ? ' <span>(zaman düzeni aynı, birim nota ve hız değişir)</span>' : ''}</div>`;
 }
 function usulPlayerHtml(u, etiket, key, startVel, alwaysTabs){
@@ -2847,10 +2866,10 @@ function usulPlayerHtml(u, etiket, key, startVel, alwaysTabs){
       ${tabs}
     </div>
     ${mertHtml(u)}
-    <div class="usul-scroll us-svgwrap">${usulSvg(u, cur, u.mert && u.mert[0] ? u.mert[0].o : null)}</div>
+    <div class="usul-scroll us-svgwrap">${usulSvg(u, cur, u.mert && u.mert[u.mertSel||0] ? u.mert[u.mertSel||0].o : null)}</div>
     <div class="usul-ctl ui">
       <button type="button" class="btn-ghost us-play">▶ Çal</button>
-      <label>Tempo <input type="range" class="us-bpm" min="15" max="240" value="${usulBaseBpm(u)}"><span class="us-bpmval"></span></label>
+      <label>Tempo <input type="range" class="us-bpm" min="15" max="240" value="${usulStartBpm(u)}"><span class="us-bpmval"></span></label>
     </div>
     ${u.not ? `<p class="ui" style="font-size:.72rem;color:var(--ink-faint);margin:.4rem 0 0;">${escapeHtml(u.not)}</p>` : ''}
   </div>`;
@@ -3020,7 +3039,7 @@ function mountUsulBoxes(root, resolve){
     const show = () => { val.textContent = bpm.value + ' zaman/dk'; };
     show(); bpm.addEventListener('input', show);
     const pat = () => (box.getAttribute('data-vel') === '1' && u.vel) ? u.vel : u.v;
-    const curOlcu = () => box.getAttribute('data-mert') || (u.mert && u.mert[0] ? u.mert[0].o : null);
+    const curOlcu = () => box.getAttribute('data-mert') || (u.mert && u.mert[u.mertSel||0] ? u.mert[u.mertSel||0].o : null);
     const setVar = (isVel) => {
       usulStop();
       box.setAttribute('data-vel', isVel ? '1' : '0');
