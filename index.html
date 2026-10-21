@@ -248,6 +248,9 @@
   .mk-sec p{margin:0; font-size:.95rem; line-height:1.55; color:var(--ink);}
   .mk-gap{font-size:.78rem; color:var(--ink-faint); border:0.5px dashed var(--border-strong); border-radius:8px; padding:.5rem .7rem; font-family:'Inter',sans-serif;}
   .mk-panel{background:var(--panel-2); border:0.5px solid var(--gold-dim); border-radius:10px; padding:.9rem 1rem; margin:0 0 1.1rem;}
+  .mk-staffbox{margin:.8rem 0 .2rem;} .mk-staffrow{margin:0 0 .7rem;} .mk-staffhead{display:flex; align-items:center; justify-content:space-between; gap:.5rem; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:.15rem;}
+  .mk-staffhead .btn-ghost{padding:.15rem .6rem; font-size:.72rem;} .mk-staffscroll{background:var(--bg); border:0.5px solid var(--border-strong); border-radius:8px; padding:.4rem .3rem .2rem; overflow-x:auto;}
+  .mk-staffnote{font-size:.7rem; line-height:1.45; color:var(--ink-faint); margin:.3rem 0 0;}
   .mk-chips{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:.5rem; font-size:.8rem; color:var(--ink);}
   .mk-chips div{background:var(--panel-3); border-radius:8px; padding:.4rem .6rem; line-height:1.35;}
   .mk-chips span{display:block; font-size:.65rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:.1rem;}
@@ -2894,7 +2897,7 @@ const MAKAM_DEFAULT = {
   ]
  }
 };
-const MAKAM_ALANLAR = [['ozet','Özet'],['dizi','Dizi ve perdeler'],['durak','Durak (karar)'],['guclu','Güçlü'],['yeden','Yeden'],['seyir','Seyir'],['arizalar','Donanım, arızalar ve geçkiler'],['tarihce','Tarihçe ve adının kökeni'],['onemli','Öne çıkan eserler, bestekârlar, yaygınlık'],['notlarim','Notlarım']];
+const MAKAM_ALANLAR = [['ozet','Özet'],['dizi','Dizi ve perdeler'],['durak','Durak (karar)'],['guclu','Güçlü'],['yeden','Yeden'],['seyir','Seyir'],['arizalar','Donanım, arızalar ve geçkiler'],['tarihce','Tarihçe ve adının kökeni'],['onemli','Öne çıkan eserler, bestekârlar, yaygınlık'],['nota','Nota dizisi (porte)'],['notlarim','Notlarım']];
 const MAKAM_KEY = 'makam_bilgi', MAKAM_FILE = 'makamlar.json';
 let makamUser = {};   // {ad: {alanlar..., kaynaklar, updatedAt, silindi?}}
 function loadMakamLocal(){ try{ makamUser = JSON.parse(localStorage.getItem(MAKAM_KEY) || '{}') || {}; }catch(e){ makamUser = {}; } }
@@ -2930,23 +2933,124 @@ async function pushMakam(){
 }
 function mkSections(info){
   let h = '';
-  MAKAM_ALANLAR.forEach(([k, b]) => { if(k !== 'ozet' && info[k] && String(info[k]).trim()) h += `<div class="mk-sec"><h4>${escapeHtml(b)}</h4><p style="white-space:pre-line;">${escapeHtml(info[k])}</p></div>`; });
+  MAKAM_ALANLAR.forEach(([k, b]) => { if(k !== 'ozet' && k !== 'nota' && info[k] && String(info[k]).trim()) h += `<div class="mk-sec"><h4>${escapeHtml(b)}</h4><p style="white-space:pre-line;">${escapeHtml(info[k])}</p></div>`; });
   return h;
 }
 function mkEksik(info){
-  const bos = MAKAM_ALANLAR.filter(([k]) => k !== 'notlarim' && !(info[k] && String(info[k]).trim())).map(([,b]) => b);
+  const bos = MAKAM_ALANLAR.filter(([k]) => k !== 'notlarim' && k !== 'nota' && !(info[k] && String(info[k]).trim())).map(([,b]) => b);
   return bos.length ? `<p class="mk-gap">Henüz doğrulanmadı / doldurulmadı: ${bos.map(escapeHtml).join(' · ')}</p>` : '';
 }
 function mkChips(info){
   const c = [['Durak', info.durak], ['Güçlü', info.guclu], ['Yeden', info.yeden], ['Seyir', info.seyir]].filter(x => x[1] && String(x[1]).trim());
   return c.length ? `<div class="mk-chips ui">${c.map(([a, v]) => `<div><span>${a}</span>${escapeHtml(v)}</div>`).join('')}</div>` : '';
 }
+// --- Porte (5'li çizgi) üzerinde makam dizisi ---
+// Nota yazımı: harf + oktav (G4 = rast, porte ikinci çizgi) + isteğe bağlı arıza: #n / bn (n = koma: 1 koma, 4 bakiye, 5 küçük mücenneb, 8 büyük mücenneb).
+// Sonek: * durak, + güçlü, ~ yeden. Satır: "Başlık: nota nota ..." (53 komalı Arel-Ezgi-Uzdilek sistemi).
+const MAKAM_NOTA = {
+ "Rast": "Çıkış: G4* A4 B4b1 C5 D5+ E5 F5#4 G5\nİniş: G5 F5 E5 D5+ C5 B4b1 A4 G4*\nYedenli karar: F4#4~ G4*",
+ "Uşşak": "Dizi: A4* B4b1 C5 D5+ E5 F5 G5 A5\nYedenli karar: G4~ A4*",
+ "Hüseynî": "Dizi: A4* B4b1 C5 D5 E5+ F5#4 G5 A5\nAcemli hüseynî: A4* B4b1 C5 D5 E5+ F5 G5 A5",
+ "Hicaz": "Dizi: A4* B4b4 C5#4 D5+ E5 F5#4 G5 A5\nYedenli karar: G4~ A4*",
+ "Nihavend": "Çıkış: G4* A4 B4b5 C5 D5+ E5b5 F5 G5\nİniş: G5 F5 E5b5 D5+ C5 B4b5 A4 G4*\nYedenli karar: F4#4~ G4*",
+ "Kürdi": "Dizi: A4* B4b5 C5 D5+ E5 F5 G5 A5",
+ "Segah": "Segâh beşlisi: B4b1* C5 D5+ E5 F5#4\nYedenli karar: A4#4~ B4b1*",
+ "Neva": "Dizi: A4* B4b1 C5 D5+ E5 F5#4 G5 A5\nYedenli karar: G4~ A4*",
+ "Acem Aşiran": "Dizi: F4* G4 A4 B4b5 C5 D5 E5 F5",
+ "Sultaniyegâh": "Kürdî'li: D4* E4 F4 G4 A4 B4b5 C5 D5+\nHicazlı: D4* E4 F4 G4 A4 B4b4 C5#4 D5+\nYedenli karar: C4#4~ D4*",
+ "Neveser": "Dizi: G4* A4 B4b4 C5#4 D5+ E5b4 F5#4 G5\nYedenli karar: F4#4~ G4*"
+};
+const NOTA_NAT = {C:0,D:9,E:18,F:22,G:31,A:40,B:49}, NOTA_STEP = {C:0,D:1,E:2,F:3,G:4,A:5,B:6};
+const PERDE_AD = {'-27':'Kaba Nîm Hicaz','-22':'Yegâh','-13':'Hüseynî Aşîrân','-9':'Acem Aşîrân','-5':'Irak','-4':'Geveşt',0:'Rast',4:'Nîm Zirgüle',5:'Zirgüle',9:'Dügâh',13:'Kürdî',14:'Dik Kürdî',17:'Segâh',18:'Bûselik',22:'Çârgâh',26:'Nîm Hicaz',27:'Hicaz',30:'Dik Hicaz',31:'Nevâ',35:'Nîm Hisar',36:'Hisar',39:'Dik Hisar',40:'Hüseynî',44:'Acem',45:'Dik Acem',48:'Eviç',49:'Mâhur',53:'Gerdâniye',57:'Nîm Şehnaz',58:'Şehnaz',62:'Muhayyer'};
+function notaFromMakam(name, info){
+  if(info && info.nota !== undefined && info.nota !== null) return String(info.nota);
+  return MAKAM_NOTA[makamKeyOf(name)] || '';
+}
+function parseNota(text){
+  const rows = [];
+  String(text || '').split('\n').forEach(line => {
+    line = line.trim(); if(!line) return;
+    let ad = '', body = line; const i = line.indexOf(':');
+    if(i >= 0){ ad = line.slice(0, i).trim(); body = line.slice(i + 1); }
+    const notes = [];
+    body.trim().split(/\s+/).forEach(tok => {
+      const m = /^([A-Ga-g])(\d)(?:([#b])(\d))?([*+~])?$/.exec(tok); if(!m) return;
+      const L = m[1].toUpperCase(), o = +m[2], acc = m[3] ? (m[3] === '#' ? 1 : -1) * (+m[4]) : 0;
+      const rel = o * 53 + NOTA_NAT[L] + acc - (4 * 53 + 31);
+      notes.push({L, o, acc, rel, step: o * 7 + NOTA_STEP[L], mark: m[5] || ''});
+    });
+    if(notes.length) rows.push({ad, notes});
+  });
+  return rows;
+}
+function staffAcc(x, y, acc){
+  // x,y: arıza simgesinin sağ-orta noktası (notanın solu). Bemol/diyez + koma sayısı.
+  const n = Math.abs(acc), fl = acc < 0;
+  let g;
+  if(fl) g = `<path d="M${x-7},${y-11} L${x-7},${y+4} M${x-7},${y+4} C${x-7},${y-2} ${x-1},${y-6} ${x-1},${y-1.5} C${x-1},${y+1.5} ${x-5},${y+3.5} ${x-7},${y+4.5}" fill="none"/>`;
+  else g = `<path d="M${x-9},${y-8} L${x-9},${y+8} M${x-4},${y-9} L${x-4},${y+7} M${x-11.5},${y-2} L${x-1.5},${y-4.5} M${x-11.5},${y+4} L${x-1.5},${y+1.5}" fill="none"/>`;
+  return `<g class="mk-acc" style="stroke:var(--gold-bright);stroke-width:1.3;stroke-linecap:round">${g}</g><text x="${x+0.5}" y="${y-5}" style="fill:var(--gold-bright);font:600 6.5px Inter,sans-serif" text-anchor="start">${n}</text>`;
+}
+function staffSvg(row, ri){
+  const s = 7, dx = 44, x0 = 52, y0 = 0;
+  const steps = row.notes.map(n => n.step), mn = Math.min(30, ...steps), mx = Math.max(38, ...steps);
+  const yOf = st => y0 + 4 * s - (st - 30) * s / 2;
+  const top = yOf(mx) - 12, bot = yOf(mn) + 10;
+  const W = x0 + row.notes.length * dx + 8;
+  const lab = bot + 12;
+  const H = lab + 36;
+  let h = `<svg class="mk-staff" viewBox="0 ${top} ${W} ${H - top}" style="width:${Math.round(W * 1.15)}px;max-width:100%;height:auto;display:block" role="img" aria-label="${escapeAttr(row.ad || 'dizi')} porte gösterimi">`;
+  for(let k = 0; k < 5; k++) h += `<line x1="4" x2="${W - 4}" y1="${y0 + k * s}" y2="${y0 + k * s}" style="stroke:var(--ink-faint);stroke-width:.8"/>`;
+  // sol anahtarı (G çizgisi = alttan ikinci çizgi, y = 3s)
+  h += `<path class="mk-clef" d="M23,${y0 + 5.2 * s} C21,${y0 + 6 * s} 14,${y0 + 6 * s} 14,${y0 + 4.9 * s} C14,${y0 + 4 * s} 21,${y0 + 4 * s} 21,${y0 + 4.9 * s} L25,${y0 - 1.1 * s} C26,${y0 - 2 * s} 29,${y0 - 1.6 * s} 28.5,${y0 + 0.4 * s} C28,${y0 + 2.2 * s} 14,${y0 + 2.6 * s} 14,${y0 + 4.2 * s} C14,${y0 + 6 * s} 31,${y0 + 5.4 * s} 31,${y0 + 3.6 * s} C31,${y0 + 2 * s} 19.5,${y0 + 2.4 * s} 20,${y0 + 3.6 * s}" fill="none" style="stroke:var(--gold);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/>`;
+  row.notes.forEach((n, i) => {
+    const cx = x0 + i * dx + dx / 2, cy = yOf(n.step);
+    // ek çizgiler
+    if(n.step < 30) for(let st = 28; st >= (n.step % 2 === 0 ? n.step : n.step + 1); st -= 2) h += `<line x1="${cx - 10}" x2="${cx + 10}" y1="${yOf(st)}" y2="${yOf(st)}" style="stroke:var(--ink-faint);stroke-width:.8"/>`;
+    if(n.step > 38) for(let st = 40; st <= (n.step % 2 === 0 ? n.step : n.step - 1); st += 2) h += `<line x1="${cx - 10}" x2="${cx + 10}" y1="${yOf(st)}" y2="${yOf(st)}" style="stroke:var(--ink-faint);stroke-width:.8"/>`;
+    if(n.acc) h += staffAcc(cx - 7, cy, n.acc);
+    const fill = n.mark === '*' ? 'var(--gold-bright)' : n.mark === '+' ? 'rgba(201,162,75,.45)' : 'none';
+    const dash = n.mark === '~' ? ' stroke-dasharray="2.2 1.8"' : '';
+    h += `<g class="mk-note" data-rel="${n.rel}" style="cursor:pointer"><ellipse cx="${cx}" cy="${cy}" rx="5.6" ry="3.7" transform="rotate(-20 ${cx} ${cy})" style="fill:${fill};stroke:var(--gold-bright);stroke-width:1.5"${dash}/><rect x="${cx - 16}" y="${cy - 12}" width="32" height="24" fill="transparent"/></g>`;
+    const nm = (PERDE_AD[n.rel] || '').split(' ');
+    nm.forEach((w, k) => { h += `<text x="${cx}" y="${lab + k * 8}" text-anchor="middle" style="fill:var(--ink);font:500 8.4px Inter,sans-serif">${escapeHtml(w)}</text>`; });
+    const tag = n.mark === '*' ? 'durak' : n.mark === '+' ? 'güçlü' : n.mark === '~' ? 'yeden' : '';
+    if(tag) h += `<text x="${cx}" y="${lab + 8 * Math.max(nm.length, 1) + 1}" text-anchor="middle" style="fill:var(--gold);font:600 7px Inter,sans-serif;letter-spacing:.04em">${tag}</text>`;
+  });
+  return h + '</svg>';
+}
+function mkStaffHtml(name, info){
+  const rows = parseNota(notaFromMakam(name, info)); if(!rows.length) return '';
+  let h = `<div class="mk-staffbox">`;
+  rows.forEach((r, ri) => {
+    h += `<div class="mk-staffrow"><div class="ui mk-staffhead"><span>${escapeHtml(r.ad || 'Dizi')}</span><button type="button" class="btn-ghost mk-play" data-rels="${r.notes.map(n => n.rel).join(',')}">▶ Çal</button></div><div class="mk-staffscroll">${staffSvg(r, ri)}</div></div>`;
+  });
+  h += `<p class="ui mk-staffnote">Simgenin yanındaki sayı koma değeridir (1 koma · 4 bakiye · 5 küçük mücenneb · 8 büyük mücenneb); ♭ = bemol, ♯ = diyez. Dolu nota durak, yarı dolu güçlü, kesik çizgili yeden. Notaya dokunursan perdesi çalınır. Nota yazımını "Düzenle" bölümünden değiştirebilirsin; perdeleri hocanla doğrula.</p></div>`;
+  return h;
+}
+let mkStaffCtx = null;
+function mkPlayRel(rel, when){
+  const c = usulGetCtx(); const t = c.currentTime + (when || 0) + 0.02;
+  const f = 392 * Math.pow(2, rel / 53);
+  [[1, 'triangle', .30], [2, 'sine', .08], [3, 'sine', .03]].forEach(([m, type, v]) => {
+    const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f * m;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.9);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.95);
+  });
+}
+document.addEventListener('click', e => {
+  const p = e.target.closest && e.target.closest('.mk-play');
+  if(p){ p.getAttribute('data-rels').split(',').forEach((r, i) => mkPlayRel(+r, i * 0.5)); return; }
+  const n = e.target.closest && e.target.closest('.mk-note');
+  if(n) mkPlayRel(+n.getAttribute('data-rel'), 0);
+});
+
 function makamPanelHtml(name){
   const info = getMakamInfo(name);
   if(!info) return `<div class="mk-panel ui"><p style="margin:0 0 .5rem;font-size:.85rem;color:var(--ink-faint);">${escapeHtml(name)} için tanıtım henüz yok.</p><button type="button" class="btn-ghost mk-btn-open" data-makam="${escapeAttr(name)}">+ Tanıtım ekle</button></div>`;
   return `<div class="mk-panel">
     <p style="margin:0 0 .6rem; font-size:.98rem; line-height:1.5; color:var(--ink);">${escapeHtml(info.ozet || '')}</p>
-    ${mkChips(info)}
+    ${mkChips(info)}${mkStaffHtml(name, info)}
     <div class="ui" style="margin-top:.7rem; display:flex; gap:.5rem; flex-wrap:wrap;">
       <button type="button" class="btn-ghost mk-btn-open" data-makam="${escapeAttr(name)}">Tamamını oku</button>
       <button type="button" class="btn-ghost mk-btn-edit" data-makam="${escapeAttr(name)}">Düzenle</button>
@@ -2962,7 +3066,7 @@ function openMakamInfo(name, editMode){
     if(!getMakamInfo(name)) h += `<p class="mk-gap" style="margin-top:.6rem;">Bu makam için tanıtım henüz hazırlanmadı.</p>`;
     else {
       h += `<p class="ui" style="font-size:.92rem; color:var(--gold-bright); margin:0 0 .9rem; line-height:1.5;">${escapeHtml(info.ozet || '')}</p>`;
-      h += mkChips(info) + '<div style="height:.8rem"></div>' + mkSections(info) + mkEksik(info);
+      h += mkChips(info) + mkStaffHtml(name, info) + '<div style="height:.8rem"></div>' + mkSections(info) + mkEksik(info);
       const ks = (info.kaynaklar || []).filter(x => x && x[0]);
       if(ks.length) h += `<div class="mk-sec" style="margin-top:.9rem;"><h4>Kaynaklar</h4>${ks.map(([t,u]) => u ? `<p class="ui" style="font-size:.8rem;"><a href="${escapeAttr(u)}" target="_blank" rel="noopener" style="color:var(--teal);">${escapeHtml(t)}</a></p>` : `<p class="ui" style="font-size:.8rem;">${escapeHtml(t)}</p>`).join('')}</div>`;
       if(info._duzenlendi) h += `<p class="ui" style="font-size:.72rem;color:var(--ink-faint);">Bu sayfa senin düzenlemelerini gösteriyor.</p>`;
@@ -2978,7 +3082,7 @@ function makamFormHtml(name, info){
   const ks = (info.kaynaklar || []).map(([t,u]) => t + (u ? ' | ' + u : '')).join('\n');
   return `<p style="font-size:1.3rem; margin:0 0 .8rem; color:var(--ink);">${escapeHtml(name)} — düzenle</p>
     <form id="mkForm" class="ui" style="display:grid; gap:.7rem;">
-      ${MAKAM_ALANLAR.map(([k,b]) => `<label style="font-size:.75rem;color:var(--ink-faint);">${escapeHtml(b)}<textarea data-k="${k}" rows="${['ozet','dizi','arizalar','tarihce','onemli','notlarim'].includes(k) ? 4 : 2}" style="${ta}">${escapeHtml(info[k] || '')}</textarea></label>`).join('')}
+      ${MAKAM_ALANLAR.map(([k,b]) => `<label style="font-size:.75rem;color:var(--ink-faint);">${escapeHtml(b)}${k === 'nota' ? '<span style="display:block;margin-top:.15rem;line-height:1.4;">Her satır: Başlık: nota nota … &nbsp;Örnek: <b>Dizi: A4* B4b1 C5 D5+ E5</b>. Harf+oktav (G4 = rast, porte 2. çizgi); #4 / b4 = bakiye, #1 / b1 = koma, #5 küçük, #8 büyük mücenneb; * durak, + güçlü, ~ yeden.</span>' : ''}<textarea data-k="${k}" rows="${['ozet','dizi','arizalar','tarihce','onemli','notlarim','nota'].includes(k) ? 4 : 2}" style="${ta}">${escapeHtml(k === 'nota' ? notaFromMakam(name, info) : (info[k] || ''))}</textarea></label>`).join('')}
       <label style="font-size:.75rem;color:var(--ink-faint);">Kaynaklar (her satır: Başlık | https://link)<textarea data-k="kaynaklar" rows="3" style="${ta}">${escapeHtml(ks)}</textarea></label>
       <p id="mkStatus" style="font-size:.78rem;color:var(--ink-dim);margin:0;"></p>
       <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
