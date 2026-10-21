@@ -299,6 +299,11 @@
   </div>
 
   <section id="usulView" style="display:none; max-width:900px; margin:0 auto; padding:0 1rem 2rem;">
+    <div class="tabs ui" id="usulSubTabs" style="margin-top:1rem;">
+      <button type="button" class="tab active" data-sub="usullar">Usûller</button>
+      <button type="button" class="tab" data-sub="egitim">Eğitim</button>
+    </div>
+    <div id="usulMain">
     <div class="usul-box" style="margin-top:1rem;">
       <p class="ui usul-title">Kendi usûlünü ekle</p>
       <div class="ui" style="display:grid; gap:.5rem;">
@@ -343,6 +348,8 @@
       </div>
     </div>
     <div id="usulList2" style="margin-top:1rem; display:grid; gap:.4rem;"></div>
+    </div>
+    <div id="usulEgitim" style="display:none;"></div>
   </section>
 
   <section id="journalView" style="display:none;">
@@ -3130,6 +3137,97 @@ async function pushOzel(){
 function usulNamesForList(){ return Array.from(new Set(tumUsuller().map(u => u.ad))); }
 
 // --- Usûller sekmesi ---
+// --- Usûl eğitimi (Usûller > Eğitim) ---
+// İçerik, M. Hurşit Ungay'ın "Türk Musîkîsinde Usûller ve Kudûm" (1981) kitabının kuramsal bölümlerinin kendi sözlerimizle özetidir.
+const EG_SEQ = {
+  'Düm':[['D',1]], 'Tek':[['T',1]], 'Te-ke':[['T',.5],['T',.5]], 'Te-kâ':[['T',.5],['T',1]],
+  'Tek-kâ':[['T',1],['T',1]], 'Düm-tek':[['D',1],['T',1]]
+};
+let egTimer = null;
+function egPlay(name){
+  clearTimeout(egTimer);
+  const seq = EG_SEQ[name]; if(!seq) return;
+  let i = 0;
+  const step = () => { if(i >= seq.length) return; usulBeep(seq[i][0]); egTimer = setTimeout(step, seq[i][1] * 60000 / 100); i++; };
+  step();
+}
+function egSec(title, html, open){
+  return `<details class="usul-box eg-sec" ${open ? 'open' : ''} style="margin-top:.8rem;"><summary class="ui" style="cursor:pointer;font-weight:600;color:var(--gold-bright);">${title}</summary><div class="eg-body ui" style="margin-top:.7rem;font-size:.88rem;line-height:1.65;color:var(--ink);">${html}</div></details>`;
+}
+const EG_DEMO = ['Yürük Semai', 'Aksak', 'Evfer', 'Nim Sofyan'];
+function renderEgitim(){
+  const el = document.getElementById('usulEgitim'); if(!el) return;
+  const demo = EG_DEMO.map(findUsul).filter(Boolean);
+  const box = (n, i) => usulPlayerHtml(demo[n], '', 'e' + i, false);
+  const vur = Object.keys(EG_SEQ).map(k => `<button type="button" class="btn-ghost eg-p" data-s="${k}" style="margin:.15rem .2rem .15rem 0;">▶ ${k}</button>`).join('');
+  const tbl = (rows) => `<table style="border-collapse:collapse;width:100%;font-size:.82rem;">${rows.map((r, i) => `<tr>${r.map(c => `<${i?'td':'th'} style="text-align:left;vertical-align:top;padding:.35rem .5rem;border-bottom:.5px solid var(--border-strong);${i?'':'color:var(--gold-bright);'}">${c}</${i?'td':'th'}>`).join('')}</tr>`).join('')}</table>`;
+  el.innerHTML =
+    `<p class="ui" style="margin:1rem 0 .2rem;font-size:.8rem;color:var(--ink-faint);">Kaynak: M. Hurşit Ungay, <i>Türk Musîkîsinde Usûller ve Kudûm</i> (1981). Aşağıdaki metin kitabın kuramsal bölümlerinin özetidir. Örnekleri çalarak dinleyebilirsin.</p>` +
+    egSec('1. Usûl nedir?', `
+      <p><b>Düzüm (ıka):</b> zamanın düzenli oranlarla bölünmesidir. Birim zamanlar 2'li ya da 3'lü gruplar oluşturur. Her grupta vuruşların gücü farklıdır: <b>kuvvetli</b>, <b>orta kuvvetli</b>, <b>hafif</b>. İkili grupta kuvvetli-hafif, üçlü grupta kuvvetli-orta-hafif duyulur.</p>
+      <p><b>Usûl:</b> belli düzümlerden kurulmuş, kalıplaşmış ölçüdür. Usûlün her vuruşuna <i>darb</i> (zarb, nakre) denir.</p>
+      <p><b>Nota süreleri:</b> en kısa nota birim (kısa) kabul edilir. Uzun nota onun 2 katı, bir sonraki 3 katı, en uzun 4 katıdır. Kısa ile uzun arasındaki oran sabittir; mutlak süre bestekârın seçtiği hıza göre değişir.</p>`, true) +
+    egSec('2. Vuruşlar (Düm, Tek, Te-ke…)', `
+      <p>Usûller dizlere vurularak öğrenilir. Sağ el sağ dize (<b>Düm</b>), sol el sol dize (<b>Tek</b>) vurur. Eller göğüs hizasına kadar kaldırılır ve vuruşun süresi kadar beklenir. Vururken vuruş adlarını yüksek sesle söylemek öğrenmeyi hızlandırır.</p>
+      ${tbl([['Vuruş','Anlamı'],
+        ['Düm','Uzun vuruş, sağ el sağ dize'],
+        ['Tek','Uzun vuruş, sol el sol dize'],
+        ['Te-ke','İki eşit kısa vuruş (ilk hece sağ, ikinci hece sol el)'],
+        ['Te-kâ','Bir kısa, bir uzun vuruş'],
+        ['Tek-kâ','İki uzun vuruş, birlikte kullanılır'],
+        ['Ta-hek','İki çeşit vuruş: ya sol el + iki el birlikte, ya da iki eli kaldırıp birlikte indirmek']])}
+      <p style="margin-top:.6rem;">Dinle (hepsi 100 vuruş/dk, birim = 1 vuruş):</p><div>${vur}</div>`) +
+    egSec('3. Usûl notası ve ölçü rakamı', `
+      <p>Usûl notası iki yatay çizgiyle yazılır: <b>üst çizgi sağ eli</b> (Düm), <b>alt çizgi sol eli</b> (Tek) gösterir. Ungay bu yazıda üst çizgi notalarının saplarını aşağı, alt çizgidekileri yukarı çevirmiştir; böylece usûl iki çizgi arasına sığar. Uygulamadaki şemada Düm dolu daire, Tek boş daire olarak çizilir.</p>
+      <p><b>Ölçü rakamı</b> (4/8, 6/4 gibi) bir kesir gibi yazılır. Alttaki sayı birim notanın cinsini (8'lik, 4'lük, 2'lik), üstteki sayı ölçüde kaç birim olduğunu, yani <b>zaman</b> sayısını verir.</p>
+      <p><b>Ölçü çizgisi:</b> ölçüleri birbirinden ayıran dikey çizgidir.</p>`) +
+    egSec('4. Mertebe (4/8, 4/4, 4/2) ve hız', `
+      <p><b>Mertebe:</b> usûlün zamanları ve vuruşları değişmeden birim notanın büyüyüp küçülmesidir. Alttaki sayı 8'ken birinci, 4'ken ikinci, 2'yken üçüncü mertebe olur (çoğu zaman). Yani aynı kalıp daha yavaş ve ağır çalınır.</p>
+      <p>Bazı mertebelerin özel adı vardır: Yürük Semai'nin 6/4 mertebesi <b>Sengin Semai</b>, 6/2'si <b>Ağır Sengin Semai</b>; Düyek'in 8/4'ü <b>Ağır Düyek</b>; Evfer'in 9/4'ü <b>Ağır Evfer</b>; Aksak Semai'nin 10/4'ü <b>Aksak Semai</b>, 10/8'i <b>Curcuna</b>.</p>
+      <p>Mertebe ayrımı kesin değildir: bestekâr birinci mertebeden bir melodiyi ikinci mertebe kadar ağır uygulayabilir.</p>
+      <p><b>Hız terimleri:</b> yürük, orta, ağır; ayrıca "hafif evvel", "hafif sânî", "sakîl". Hız metronomla birim notaya göre yazılabilir (örneğin birim = 60 ya da 120).</p>
+      <p style="margin-top:.5rem;">Dene: aşağıdaki Yürük Semai'de mertebe düğmelerine bas, tempo ve ölçü rakamı değişir.</p>
+      ${demo[0] ? box(0, 0) : ''}`) +
+    egSec('5. Usûller nasıl sınıflanır?', `
+      <p><b>Büyüklüğe göre:</b> 15 zamana kadar olanlar <b>küçük usûller</b>, 16 ve üstü <b>büyük usûller</b>.</p>
+      <p><b>Yapıya göre:</b> iki ve üç zamanlı <b>basit usûller</b> (Nim Sofyan ve Semai) başka ölçülerden kurulmaz, aksine diğerlerinin yapı taşıdır. Geri kalan hepsi <b>birleşik (mürekkep)</b> usûldür.</p>
+      <p><b>Birleşim örnekleri:</b> Sofyan iki Nim Sofyan'dan; Türk Aksağı bir Nim Sofyan ile bir Semai'den; Yürük Semai iki Semai'den; Raks Aksağı bir Türk Aksağı ile bir Sofyan'dan kurulmuştur. Evfer, Aksak'tan yalnız son iki Tek'in süresini değiştirerek farklılaşır; güçlü ve hafif zamanların yeri de değişir.</p>
+      <p>Zincir usûller küçük usûllerin art arda eklenmesiyle uzar (örneğin Zincir = Çifte Düyek + Fahte + Çember + Devr-i Kebir + Berefşan, 120 zaman).</p>
+      <p style="margin-top:.5rem;">Karşılaştır: Aksak ve Evfer (ikisi de 9 zamanlı).</p>
+      ${demo[1] ? box(1, 1) : ''}${demo[2] ? box(2, 2) : ''}`) +
+    egSec('6. Kudüm ve velveleli kalıplar', `
+      <p><b>Kudüm</b>, Mevlevi tekkelerinde çalınan eski bir derili vurmalı sazdır. İki dökme bakır tası deve derisiyle gerilir; sesin madeniliğini azaltmak için bakırın üstüne keçe benzeri dolgu ve mesin konur. <b>Zahme</b> denilen iki değnekle çalınır (gül ağacından yapılanlar makbuldür). Pes ses <b>Düm</b>, tiz ses <b>Tek</b>'tir. Kudüm çalana <b>kudümzen</b> denir; mutribde kudümzen heyetin başıdır.</p>
+      <p><b>Velveleli kalıp:</b> usûlün vuruşlarının zaman birimini daha küçük parçalara bölerek kalıplaştırılmış hâlidir. Mevlevi âyinlerinde birden fazla kudüm çalındığı için birlik ve beraberlik sağlamak amacıyla yazıya geçirilmiştir. Diğer vurmalı sazlarda ise velveleli kalıp esas alınmakla birlikte çalgıcının hüner ve becerisine bırakılır.</p>
+      <p>Velvelelide vuruş adları aynıdır; Ta-hek yerine yalnızca <b>Hek</b> kullanılır, ayrıca <b>Dü</b> (kısa sağ vuruş) ve <b>Me</b> eklenir.</p>
+      <p><b>Zahme kullanımı:</b> Düm ve Dü sağ kudüme vurulur. Tek, Me, Ke, Kâ sol kudüme vurulur. Hek'te iki zahme birlikte sol kudüme iner. Ana usûl vurulurken sağ el sola gitmez; kudüm usûllerinde ise sol zahme hiçbir zaman sağ kudüme gitmez. Çalarken zahmeler yukarı kaldırılmaz.</p>
+      <p><b>Yazılışı:</b> iki çizgide üst çizgi sağ kudümü (Düm), alt çizgi sol kudümü (Tek) gösterir. Üç çizgili yazılışta en üst çizgi sağ kudüm, ortadaki sağ el zahmesinin sol kudüme vuruşları, alttaki sol el zahmesinin vuruşlarıdır.</p>
+      <p>Uygulamada Hek, tek vuruş olarak çalınır. Her usûlde <b>Normal</b> ve <b>Velveleli</b> sekmesi vardır; velveleli yoksa kendin ekleyebilirsin.</p>
+      ${demo[3] ? box(3, 3) : ''}`) +
+    egSec('7. Nasıl çalışmalı? (alıştırma önerisi)', `
+      <ol style="margin:.2rem 0 0 1.1rem;padding:0;">
+        <li>Önce usûlü yavaş tempoda, sadece <b>Düm</b> ve <b>Tek</b> adlarını söyleyerek dizine vur.</li>
+        <li>Zaman numaralarını (şemanın üstündeki 1, 2, 3…) içinden say; Düm hep sağ, Tek hep sol dizde olsun.</li>
+        <li>Uzun vuruşta elini indirip süresi kadar bekle; kısa vuruşlarda (Te-ke) sıra sağ-sol olsun.</li>
+        <li>Tempoyu kademeli artır; sonra aynı usûlü bir sonraki mertebede (ör. 8/4) yavaş çal.</li>
+        <li>Usûl oturunca velveleli kalıba geç ve metronom (Çal düğmesi) eşliğinde tekrar et.</li>
+        <li>Bir eserin usûlünü çalışırken eserin satırına usûlü yazarsan şema orada da çıkar (örn. <b>1. Selam: Ağır Düyek; 2. Selam: Ağır Evfer</b>).</li>
+      </ol>`) +
+    egSec('8. Kitaptaki usûl listesi', `
+      <p>Kitap usûlleri zaman sayısına göre sıralar. Bu uygulamada <b>Usûller</b> sekmesi aynı sırayı izler: Nim Sofyan (2) ile başlar, Darb-ı Fetih (88) ile biter. Kalıbı bilinen ama eseri olmayan usûller kitapta en sondadır. Her usûlün altında kitaptaki sayfa numarası yazılıdır.</p>
+      <p>Okuma durumu: <b>Hocanla doğrula</b> işaretli kalıplar notasyondan okunmuştur; hocanın vuruşlarıyla karşılaştır.</p>`);
+  usulStop();
+  mountUsulBoxes(el, b => { const i = Number(String(b.getAttribute('data-usul')).slice(1)); return demo[[0,1,2,3][i]]; });
+  el.onclick = e => { const b = e.target.closest('.eg-p'); if(b){ usulUnlockAudio(); egPlay(b.dataset.s); } };
+}
+function setUsulSub(sub){
+  const eg = sub === 'egitim';
+  usulStop();
+  document.querySelectorAll('#usulSubTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.sub === sub));
+  document.getElementById('usulMain').style.display = eg ? 'none' : '';
+  document.getElementById('usulEgitim').style.display = eg ? '' : 'none';
+  if(eg) renderEgitim();
+}
+document.querySelectorAll('#usulSubTabs .tab').forEach(t => t.addEventListener('click', () => setUsulSub(t.dataset.sub)));
 function renderUsulView(){
   const q = usulNorm(document.getElementById('search').value);
   const all = tumUsuller().filter(u => !q || usulNorm(u.ad).includes(q)).sort((a,b) => a.zaman - b.zaman || trSort(a.ad, b.ad));
